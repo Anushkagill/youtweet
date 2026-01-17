@@ -3,6 +3,7 @@ import {ApiErrors} from "../utils/ApiErrors.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import {ApiResponse} from "..//utils/ApiResponse.js"
+
 const registerUser=asyncHandler(async(req,res)=>{
     //get user from frontend
     //validation-not empty
@@ -21,7 +22,7 @@ const registerUser=asyncHandler(async(req,res)=>{
         throw new ApiErrors(400,"All fields are required")
     }
 
-    const existedUser=User.findOne({
+    const existedUser=await User.findOne({
         $or:[{username},{email}]
     })
 
@@ -29,7 +30,12 @@ const registerUser=asyncHandler(async(req,res)=>{
         throw new ApiErrors(409,"user exist already with same email or username")
     }
 
-    const avatarLocalPath=req.files?.avatar[0]?.path;
+    let avatarLocalPath;
+
+    if(req.files?.avatar && req.files.avatar.length>0){
+        avatarLocalPath=req.files.avatar[0]?.path
+    }
+
     const coverImageLocalPath=req.files?.coverImage[0]?.path;
 
     if(!avatarLocalPath){
@@ -40,7 +46,7 @@ const registerUser=asyncHandler(async(req,res)=>{
     const coverImage=await uploadOnCloudinary(coverImageLocalPath)
 
     if(!avatar){
-        throw new error(400,"avatar is required") 
+        throw new ApiErrors(400,"avatar is required") 
     }
 
     const user=await User.create({
@@ -57,6 +63,10 @@ const registerUser=asyncHandler(async(req,res)=>{
     if(!createdUser){
         throw new ApiErrors(500,"something went wrong while registering the user")
     }
+
+    return res.status(201).json(
+        new ApiResponse(200,createdUser,"USER REGISTERED",)
+    )
 })
 
 export {
