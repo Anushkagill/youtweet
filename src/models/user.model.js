@@ -1,8 +1,8 @@
-import mongoose,{schema} from "mongoose";
+import mongoose,{Schema} from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken"
 
-const userSchema=new schema({
+const userSchema=new Schema({
     username:{
         type:String,
         required:true,
@@ -25,24 +25,24 @@ const userSchema=new schema({
         index:true
     },
     avatar:{
-        type:string, //cloudinary service (jaha p agr files upload kro to vo url de deta h)
+        type:String, //cloudinary service (jaha p agr files upload kro to vo url de deta h)
         required:true,
     },
     coverImage:{
-        type:string,//cloudinary se url
+        type:String,//cloudinary se url
     },
     watchHistory:[
         {
-            type:schema.Types.ObjectId,
+            type:Schema.Types.ObjectId,
             ref:"Video"
         }
     ],
     password:{
-        type:string,//but string kse?
+        type:String,//but string kse?
         required:[true,'password is required']
     },
     refreshToken:{ //what is tokens ?
-        type:string
+        type:String
     },
 },
 {
