@@ -1,15 +1,13 @@
 //require ('dotenv').config({path:'./env'})
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import { DB_NAME } from "./constants.js";
+//import dotenv from "dotenv";    (no need to write now as we added -r dotenv/config in package.json that means dotenv will run earlier than app and process.env will be available in app.js)
 import connectDB from "./db/index.js";
 import {app} from './app.js'
 
-dotenv.config({
+/*dotenv.config({
     path:'./.env'
-})
+})*/
 
-
+ 
 connectDB()
 .then(()=>{
     app.on("error", (error) => {
