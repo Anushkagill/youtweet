@@ -44,7 +44,8 @@ const userSchema=new Schema({
     ],
     password:{
         type:String,//but string kse?
-        required:[true,'password is required']
+        required:[true,'password is required'],
+        select:false
     },
     refreshToken:{ //what is tokens ?
         type:String

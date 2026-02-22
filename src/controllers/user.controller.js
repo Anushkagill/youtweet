@@ -32,12 +32,27 @@ const registerUser=asyncHandler(async(req,res)=>{
     //check for user creation
     //return response
 
-    const {username,email,fullName,password}=req.body
+    const {username,email,fullName,password}=req.body //destructure krke data le liya req.body se
+    //frontend se req.body m data aata hai
+    
     console.log("email:",email);
 
-    if([username,email,fullName,password].some((field)=>field?.trim()==="")){
-        throw new ApiErrors(400,"All fields are required")
-    }
+    //if([username,email,fullName,password].some((field)=>field?.trim()==="")){
+        //throw new ApiErrors(400,"All fields are required")
+    //}//ye check krne ke liye ki username,email,fullname,password me se koi bhi field empty to nahi hai,agar empty hai to error throw krdo
+    //trim() function se hum ye check kr rhe hai ki field me space to nahi hai,agar space hai to usko empty string se compare krke check kr rhe hai 
+//some() function se hum ye check kr rhe hai ki username,email,fullname,password me se koi bhi field empty to nahi hai,agar koi bhi field empty hai to some() function true return krdega aur uske basis pe hum error throw krdenge
+
+
+    if (
+  !username?.trim() ||
+  !email?.trim() ||
+  !fullName?.trim() ||
+  !password?.trim()
+) {
+  throw new ApiErrors(400, "All fields are required");
+}
+
 
     const existedUser=await User.findOne({
         $or:[{username},{email}]
