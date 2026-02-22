@@ -17,9 +17,9 @@ import multer from "multer";
 const router=Router()
 
 router.route("/register").post(
-    upload.fields([
+    upload.fields([//yaha multer middleware lga diya hai kyuki user registration ke time pe avatar aur cover image dono upload kar sakta hai to before registering the user we need to handle the file upload and then pass the control to the registerUser controller
         {
-            name:"avatar",
+            name:"avatar",//
             maxCount:1
 
         },

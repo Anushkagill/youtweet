@@ -6,14 +6,13 @@ import {ApiResponse} from "..//utils/ApiResponse.js"
 import jwt from "jsonwebtoken";
 import fs from "fs"
 
-const generateAccessAndRefreshTokens=async(userId)=>{
+const generateAccessAndRefreshTokens=async(user)=>{
     try{
-        const user=await User.findById(userId)
         const accessToken=user.generateAccessToken()
         const refreshToken=user.generateRefreshToken()
 
         user.refreshToken=refreshToken
-        await user.save({validateBeforeSave:false})
+        await user.save({validateBeforeSave:false})//kyuki hume user ke refresh token ko update karna hai database me bina kisi validation ke kyuki user ka password change hone pe bhi refresh token invalidate ho jana chahiye to hume validateBeforeSave:false use karna padega taki password validation na ho aur user ka refresh token update ho jaye database me
 
         return {accessToken,refreshToken}
     }
@@ -116,31 +115,50 @@ const loginUser=asyncHandler(async(req,res)=>{
 
     const {email,username,password }=req.body
 
-    if(!username && !email){
-        throw new ApiErrors(400,"username and password is required")
+    if(!username?.trim() && !email?.trim()){//username or email dono me se koi ek hona chahiye login ke time pe
+        throw new ApiErrors(400,"username or password is required")
     }
 
+    if(!password?.trim()){//password bhi required hai login ke time pe
+        throw new ApiErrors(400,"Password is required")
+    }
+
+
     const user =await User.findOne({
-        $or:[{username},{email}]
-    })
+        $or:[{username:username?.trim()?.toLowerCase()},{email:email?.trim()?.toLowerCase()}]
+    }).select("+password")//kyuki password field ko humne select:false kiya hai user model me to hume login ke time pe password field ko explicitly select karna padega taki hum password verify kar sake login ke time pe
 
     if(!user){
         throw new ApiErrors(404,"user does not exist")
     }
+
+    //User se hum mongodb mongoose ka model h User so we can access the methods like findby updateby and all
+    //but jo methods humne khudse bnae he like isPasswordCorrect,generateAccessToken,generateRefreshToken vo user ke instance methods hai 
+    //to unhe we can access through the user instance that we just found using findOne method. So user.isPasswordCorrect() and all will work because user is an instance of User model and it has access to all the instance methods defined in the userSchema.methods.
+    //so jo user hume db se mila hai vo ek document hoga aur us document ke through hum apne defined methods ko access kar sakte hai. Isliye hum user.isPasswordCorrect() use kar sakte hai password verify karne ke liye.
+
 
     const isPasswordValid=await user.isPasswordCorrect(password)
 
     if(!isPasswordValid){
         throw new ApiErrors(401,"password incorrect")
     }
-    const {accessToken,refreshToken}=await generateAccessAndRefreshTokens(user._id)
+    const {accessToken,refreshToken}=await generateAccessAndRefreshTokens(user)
 
-    const loggedInUser=await User.findById(user._id).select("-password -refreshToken")
+    const loggedInUser = user.toObject();
+    delete loggedInUser.password;
+    delete loggedInUser.refreshToken;
 
     const options={
         httpOnly:true,
-        secure:true
+        secure:process.env.NODE_ENV === "production"
     }
+    
+    //what is cookie why we sent it? cookie ek tarika hai client side pe data store karne ka aur server side pe usse access karne ka. Yaha pe hum access token aur refresh token ko cookie me store kar rahe hai taki client side pe unhe access kar sake aur server side pe unhe verify kar sake. 
+    // HttpOnly flag set karne se cookie client side ke javascript se access nahi ho sakti, isse security badh jati hai cross site scripting attacks ke against. Secure flag set karne se cookie sirf https connection me hi send hoti hai, isse bhi security badh jati hai. Yaha pe hum access token
+    //  aur refresh token dono ko cookie me store kar rahe hai taki client side pe unhe access kar sake aur server side pe unhe verify kar sake jab bhi user koi secured route access kare. Access token ko short expiry time ke liye generate kiya jata hai aur refresh token ko long expiry time ke 
+    // liye generate kiya jata hai taki jab access token expire ho jaye to user refresh token ke through new access token generate kar sake bina login kiye. Agar refresh token bhi expire ho jaye to user ko dobara login karna padega. Isliye refresh token ko bhi secure tarike se handle karna zaruri hai.
+
 
     return res
     .status(200)
