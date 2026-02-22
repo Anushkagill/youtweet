@@ -4,6 +4,7 @@ import {User} from "../models/user.model.js"
 import {uploadOnCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"
 import {ApiResponse} from "..//utils/ApiResponse.js"
 import jwt from "jsonwebtoken";
+import fs from "fs"
 
 const generateAccessAndRefreshTokens=async(userId)=>{
     try{
@@ -35,69 +36,71 @@ const registerUser=asyncHandler(async(req,res)=>{
     const {username,email,fullName,password}=req.body //destructure krke data le liya req.body se
     //frontend se req.body m data aata hai
     
-    console.log("email:",email);
-
-    //if([username,email,fullName,password].some((field)=>field?.trim()==="")){
-        //throw new ApiErrors(400,"All fields are required")
-    //}//ye check krne ke liye ki username,email,fullname,password me se koi bhi field empty to nahi hai,agar empty hai to error throw krdo
-    //trim() function se hum ye check kr rhe hai ki field me space to nahi hai,agar space hai to usko empty string se compare krke check kr rhe hai 
-//some() function se hum ye check kr rhe hai ki username,email,fullname,password me se koi bhi field empty to nahi hai,agar koi bhi field empty hai to some() function true return krdega aur uske basis pe hum error throw krdenge
-
+    //console.log("email:",email);
 
     if (
-  !username?.trim() ||
-  !email?.trim() ||
-  !fullName?.trim() ||
-  !password?.trim()
-) {
-  throw new ApiErrors(400, "All fields are required");
-}
-
-
-    const existedUser=await User.findOne({
-        $or:[{username},{email}]
-    })
-
-    if(existedUser){
-        throw new ApiErrors(409,"user exist already with same email or username")
+        !username?.trim() ||
+        !email?.trim() ||
+        !fullName?.trim() ||
+        !password?.trim()
+    ) {
+         throw new ApiErrors(400, "All fields are required");
     }
 
     let avatarLocalPath;
-
     if(req.files?.avatar && req.files.avatar.length>0){
         avatarLocalPath=req.files.avatar[0]?.path
     }
 
-    const coverImageLocalPath=req.files?.coverImage[0]?.path;//change it too like avatarlocalpath
+    let coverImageLocalPath;
+    if(req.files?.coverImage && req.files.coverImage.length>0){
+        coverImageLocalPath=req.files.coverImage[0]?.path
+    }
 
     if(!avatarLocalPath){
         throw new ApiErrors(400,"Avatar is required")
+    } 
+
+    const existedUser=await User.findOne({
+        $or:[{username:username.trim().toLowerCase()},{email: email.trim().toLowerCase()}]
+    })
+
+    if(existedUser){
+        fs.unlinkSync(avatarLocalPath)
+        if(coverImageLocalPath)fs.unlinkSync(coverImageLocalPath)
+        throw new ApiErrors(409,"user exist already with same email or username")
     }
 
     const avatar=await uploadOnCloudinary(avatarLocalPath)
-    const coverImage=await uploadOnCloudinary(coverImageLocalPath)
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if(!avatar){
         throw new ApiErrors(400,"avatar is required") 
     }
 
     const user=await User.create({
-        fullName,
-        avatar:avatar.url,
-        coverImage:coverImage?.url || "",
-        email,
+        fullName: fullName.trim(),
+        avatar: avatar.url,
+        coverImage: coverImage?.url || "",
+        email: email.trim().toLowerCase(),
         password,
-        username
+        username: username.trim().toLowerCase()
     })
+    
+    const createdUser = user.toObject();
+    delete createdUser.password;
+    delete createdUser.refreshToken;
 
-    const createdUser= await User.findById(user._id).select("-password  -refreshToken")//
+    //const createdUser= await User.findById(user._id).select("-password  -refreshToken")//
 
     if(!createdUser){
+        if(avatarLocalPath) fs.unlinkSync(avatarLocalPath)
+        if(coverImageLocalPath)fs.unlinkSync(coverImageLocalPath)
         throw new ApiErrors(500,"something went wrong while registering the user")
     }
 
     return res.status(201).json(
-        new ApiResponse(200,createdUser,"USER REGISTERED",)
+        new ApiResponse(201,createdUser,"USER REGISTERED",)
     )
 })
 
