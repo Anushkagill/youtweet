@@ -323,80 +323,80 @@ const updateAccountDetails=asyncHandler(async(req,res)=>{
 });
 
 
-const updateUserAvatar=asyncHandler(async(req,res)=>{
-    const avatarLocalPath=req.file?.path
+const updateUserAvatar = asyncHandler(async (req,res)=>{
+
+    const avatarLocalPath = req.file?.path;
 
     if(!avatarLocalPath){
-        throw new ApiErrors(400,"Avatar file is missing")
+        throw new ApiErrors(400,"Avatar file is missing");
     }
 
-    const oldUser = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id);
 
-    const avatar=await uploadOnCloudinary(avatarLocalPath)
-
-    if(!(avatar?.url)){
-        throw new ApiErrors(400,"error uploading on avatar")
+    if(!user){
+        throw new ApiErrors(404,"User not found");
     }
 
-    if (oldUser?.avatar) {
-        await deleteFromCloudinary(oldUser.avatar);
+    const uploadedAvatar = await uploadOnCloudinary(avatarLocalPath);
+
+    if(!uploadedAvatar?.url){
+        throw new ApiErrors(400,"Error uploading avatar");
     }
 
+    // delete old avatar if exists
+    if(user.avatar){
+        await deleteFromCloudinary(user.avatar);
+    }
 
-    const user=await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set:{
-                avatar:avatar.url
-            }
-        },
-        {
-            new:true
-        }
-    ).select("-password")
+    user.avatar = uploadedAvatar.url;
+
+    await user.save({ validateBeforeSave:false });
+
+    user.password = undefined;
+    user.refreshToken = undefined;
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,user,"avatar updated successfully"))
-})
+        .status(200)
+        .json(new ApiResponse(200,user,"Avatar updated successfully"));
+});
 
 
-const updateUserCoverImage=asyncHandler(async(req,res)=>{
-    const coverImageLocalPath=req.file?.path
+const updateUserCoverImage = asyncHandler(async (req,res)=>{
+
+    const coverImageLocalPath = req.file?.path;
 
     if(!coverImageLocalPath){
-        throw new ApiErrors(400,"coverImage file is missing")
+        throw new ApiErrors(400,"Cover image file is missing");
     }
 
-    const oldUser = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id);
 
-    const coverImage=await uploadOnCloudinary(coverImageLocalPath)
-
-    if(!(coverImage?.url)){
-        throw new ApiErrors(400,"error uploading on coverImage")
+    if(!user){
+        throw new ApiErrors(404,"User not found");
     }
 
-    if (oldUser?.coverImage) {
-        await deleteFromCloudinary(oldUser.coverImage);
+    const uploadedCoverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+    if(!uploadedCoverImage?.url){
+        throw new ApiErrors(400,"Error uploading cover image");
     }
 
+    // delete old cover image if exists
+    if(user.coverImage){
+        await deleteFromCloudinary(user.coverImage);
+    }
 
-    const user=await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set:{
-                coverImage:coverImage.url
-            }
-        },
-        {
-            new:true
-        }
-    ).select("-password")
+    user.coverImage = uploadedCoverImage.url;
+
+    await user.save({ validateBeforeSave:false });
+
+    user.password = undefined;
+    user.refreshToken = undefined;
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,user,"cover image updated successfully"))
-})
+        .status(200)
+        .json(new ApiResponse(200,user,"Cover image updated successfully"));
+});
 
 
 const getUserChannelProfile=asyncHandler(async(req,res)=>{
