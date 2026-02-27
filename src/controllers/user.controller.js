@@ -411,6 +411,8 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
 
     //aggregate = powerful MongoDB pipeline
     // Isme multiple steps ek saath perform hote hain database ke andar
+    //aggregation pipeline mai hum ek array of objects dete hain, array ka har object ek stage hota hai
+//The documents that are output from one stage are passed to the next stage
     const channel=await User.aggregate([
         {
             // aggregate = powerful MongoDB pipeline
@@ -474,6 +476,8 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
             }
         }
     ])
+    //aggregate returns an array containing all the documents formed after all stages
+    //iss case mai array ke andar bus ek he document hoga
 
     if(!channel?.length){// agar channel array empty hai to iska matlab hai ki aisa channel exist nahi karta jiska username match karta ho with the provided username in the request parameters. To is case me hum error throw karenge ki channel exist nahi karta.
        throw new ApiErrors(400,"channel doesnot exist")
@@ -486,20 +490,65 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
 
 
 const getWatchHistory=asyncHandler(async(req,res)=>{
+    // GOAL:
+    // Logged-in user ka watch history return karna
+    // Lekin sirf video IDs nahi,
+    // pura video details + video owner details ke saath.
     const user=await User.aggregate([
         {
+            // --------------------------------
+        // STAGE 1: $match
+        // --------------------------------
+        // $match = filter stage
+        // Yaha hum sirf current logged-in user ko find kar rahe hain.
+        //
+        // Important:
+        // MongoDB me _id ka type "ObjectId" hota hai.
+        // Lekin req.user._id usually string hota hai.
+        // Agar string se match karenge to match fail ho sakta hai.
+        //
+        // Isliye hum string ko ObjectId me convert kar rahe hain.
             $match:{
-                _id:new mongoose.Types.ObjectId(req.user._id)
+                _id:new mongoose.Types.ObjectId(req.user._id)// aggregate me match stage me hum _id ko ObjectId me convert kar rahe hai taki wo match ho sake with the _id stored in the database which is of type ObjectId
             }
         },
         {
+            // --------------------------------
+        // STAGE 2: $lookup (videos collection se join)
+        // --------------------------------
+        // $lookup = SQL ke JOIN jaisa hota hai.
+        //
+        // Yaha hum:
+        // Users collection ke watchHistory array me jo video IDs stored hain,
+        // un IDs ke corresponding video documents videos collection se la rahe hain.
+        //
+        // localField = user ke document me jo field hai (watchHistory array)
+        // foreignField = videos collection me jis field se match karna hai (_id)
+        // as = result kis naam se store hoga
+        //
+        // IMPORTANT:
+        // Agar watchHistory = [V1, V2]
+        // To yeh lookup videos collection me _id = V1 aur V2 find karega.
             $lookup:{
                 from:"videos",
                 localField:"watchHistory",
                 foreignField:"_id",
                 as:"watchHistory",
+                // --------------------------------
+                // PIPELINE inside lookup
+                // --------------------------------
+                // Ab har video ke upar extra processing karni hai.
+                // Matlab video ke andar owner ka pura data bhi attach karna hai.
                 pipeline:[
                     {
+                        // --------------------------------
+                    // INNER LOOKUP: video ke owner ka data laana
+                    // --------------------------------
+                    // Har video me ek field hoti hai:
+                    // owner: <userId>
+                    //
+                    // Ab hume owner ka pura user document chahiye.
+
                         $lookup:{
                             from:"users",
                             localField:"owner",
@@ -517,6 +566,19 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
                         }
                     },
                     {
+                        // --------------------------------
+                    // $addFields
+                    // --------------------------------
+                    // Problem:
+                    // $lookup hamesha array return karta hai.
+                    //
+                    // Example:
+                    // owner: [ { fullName: "Aarav" } ]
+                    //
+                    // Lekin hume array nahi chahiye,
+                    // hume direct object chahiye.
+                    //
+                    // $first = array ka first element nikal do.
                         $addFields:{
                             owner:{
                                 $first:"$owner"
