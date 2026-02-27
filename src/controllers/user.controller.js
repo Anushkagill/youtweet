@@ -175,6 +175,7 @@ const loginUser=asyncHandler(async(req,res)=>{
 
 
 const logoutUser=asyncHandler(async(req,res)=>{
+
     await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -222,9 +223,9 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
     
         const options={
             httpOnly:true,
-            secure:true
+            secure:process.env.NODE_ENV === "production"
         }
-        const {accessToken,newrefreshToken}=await generateAccessAndRefreshTokens(user._id)
+        const {accessToken,newrefreshToken}=await generateAccessAndRefreshTokens(user)
     
         return res
         .status(200)
