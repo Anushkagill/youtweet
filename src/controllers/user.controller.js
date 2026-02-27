@@ -401,53 +401,70 @@ const updateUserCoverImage = asyncHandler(async (req,res)=>{
 
 const getUserChannelProfile=asyncHandler(async(req,res)=>{
     const {username}=req.params
+    // req.params se username aa raha hai
+    // Example route: /channel/:username
 
+    // Agar username empty ya missing hai to error throw karo
     if(!username?.trim()){
         throw new ApiErrors(400,"username is missing")
     }
 
+    //aggregate = powerful MongoDB pipeline
+    // Isme multiple steps ek saath perform hote hain database ke andar
     const channel=await User.aggregate([
         {
+            // aggregate = powerful MongoDB pipeline
+    // Isme multiple steps ek saath perform hote hain database ke andar
             $match:{
                 username:username?.toLowerCase()
             }
         },
         {
+            // STEP 2: $lookup = join with another collection
+        // Yaha subscriptions collection se data la rahe hain
             $lookup:{
-                from:"subscriptions",
-                localField:"_id",
-                foreignField:"channel",
-                as:"subscribers"
+                from:"subscriptions", // dusri collection ka naam
+                localField:"_id",   // current user ka _id
+                foreignField:"channel", // subscriptions me channel field jo user ke _id se match karega
+                as:"subscribers"  // result array ka naam
             }
         },
+         // STEP 3: Second lookup
+        // Is user ne kin kin channels ko subscribe kiya
         {
             $lookup:{
                 from:"subscriptions",
                 localField:"_id",
-                foreignField:"subscriber",
-                as:"subscribeTo"
+                foreignField:"subscriber",// jaha subscriber current user hai
+                as:"subscribeTo"// result array ka naam
             }
         },
+        // jaha subscriber current user hai
         {
             $addFields:{
+                // subscribersCount = subscribers array ka size
                 subscribersCount:{
-                    $size:"$subscribers"
+                    $size:"$subscribers"// subscribers array ka size nikal ke subscribersCount field me store kar do
                 },
                 channelsSubscribedToCount:{
                     $size:"$subscribeTo"
                 },
+                 // isSubscribed check karega:
+                // kya logged-in user ne is channel ko subscribe kiya hai?
                 isSubscribed:{
-                    $cond:{
+                    $cond:{// $cond = if-else condition
+                        // $in = check karta hai value array me exist karti hai ya nahi
                         if:{$in:[req.user?._id,"$subscribers.subscriber"]},
-                        then:true,
+                        then:true,// agar logged-in user ka _id subscribers array ke subscriber field me exist karta hai to isSubscribed true hoga warna false
                         else:false
                     }
                 }
             }
         },
         {
+            // STEP 4: $project = select specific fields to return in the final result
             $project:{
-                fullName:1,
+                fullName:1,// 1 means include this field in the result
                 username:1,
                 channelIsSubscribedTo:1,
                 isSubscribed:1,
@@ -458,13 +475,13 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
         }
     ])
 
-    if(!channel?.length){
+    if(!channel?.length){// agar channel array empty hai to iska matlab hai ki aisa channel exist nahi karta jiska username match karta ho with the provided username in the request parameters. To is case me hum error throw karenge ki channel exist nahi karta.
        throw new ApiErrors(400,"channel doesnot exist")
     }
 
     return res
     .status(200)
-    .json(new ApiResponse(200,channel[0],"user channel fetched successfully"))
+    .json(new ApiResponse(200,channel[0],"user channel fetched successfully"))// channel[0] isliye kyuki aggregate hume array return karta hai aur hume usme se pehla element chahiye jo ki matched channel hoga with the provided username in the request parameters.
 })
 
 
