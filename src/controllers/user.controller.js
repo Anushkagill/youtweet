@@ -251,7 +251,10 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
 const changeCurrentPassword=asyncHandler(async(req,res)=>{
     const {oldPassword,newPassword}=req.body
 
-    const user=await user.findById(req.user?._id)
+    if(!oldPassword?.trim()) throw new ApiErrors(400, "Current Password is required");
+    if(!newPassword?.trim()) throw new ApiErrors(400, "New Password is required");
+
+    const user=await User.findById(req.user?._id).select("+password")
 
     const isPasswordCorrect=await user.isPasswordCorrect(oldPassword)
 
@@ -259,7 +262,9 @@ const changeCurrentPassword=asyncHandler(async(req,res)=>{
         throw new ApiErrors(400,"invalid old password")
     }
 
-    user.password=newPassword
+    user.password=newPassword;
+     user.refreshToken = undefined;
+     //jab bhi user apna password change kare to uska refresh token invalidate ho jana chahiye taki security badh jaye. Isliye hum user ke refresh token ko undefined kar rahe hai taki jab user apna password change kare to uska refresh token invalidate ho jaye aur agar koi attacker ke paas user ka refresh token hai to vo usse use nahi kar paega new access token generate karne ke liye.
     await user.save({validateBeforeSave:false})
 
     return res.status(200)
@@ -276,26 +281,46 @@ const getCurrentUser=asyncHandler(async(req,res)=>{
 
 const updateAccountDetails=asyncHandler(async(req,res)=>{
     const {fullName,email}=req.body
+    if (!fullName?.trim() && !email?.trim()) {
+        throw new ApiErrors(400, "Fullname or Email is required");
+    }//fullname or email me se koi ek update karna chahiye to update account details ke time pe
 
-    if(!fullName&&!email){
-        throw new ApiErrors(400,"all fields are required")
+    let updateFields = {};
+
+    // If fullname is provided
+    if (fullName?.trim()) {
+        updateFields.fullName = fullName.trim();
     }
 
-    const user=await user.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set:{
-                fullName,//its js syntax if both have name name like fullname:fullname we can write it simply as fullname 
-                email:email
-            }
-        },
-        {new:true}
-    ).select("-password -refreshToken")
+    // If email is provided
+    if (email?.trim()) {
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // Check if another user already has this email
+        const existedUser = await User.findOne({
+            email: normalizedEmail,
+            _id: { $ne: req.user._id } // ignore current user ,ne=not equal to operator hai mongodb ka jo ki yaha pe use ho raha hai taki jab hum email update kar rahe hai to hume check karna hai ki koi aur user to us email ko use nahi kar raha hai to uske liye hum $ne operator ka use kar rahe hai taki current user ko ignore kar sake email check karte time pe
+        });
+
+        if (existedUser) {
+            throw new ApiErrors(400, "Another user with same email already exists");
+        }
+
+        updateFields.email = normalizedEmail;
+    }
+
+    // Update user
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: updateFields },
+        { new: true }
+    ).select("-password -refreshToken");
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,"user,account details updated successfully "))
-})
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated successfully"));
+});
 
 
 const updateUserAvatar=asyncHandler(async(req,res)=>{
