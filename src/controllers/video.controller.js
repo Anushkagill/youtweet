@@ -415,4 +415,43 @@ const updateVideo = asyncHandler(async (req, res) => {
     );
 });
 
+const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
 
+    if(!videoId?.trim()) {
+        throw new ApiErrors(400, "Video ID is required");
+    }
+    if (!isValidObjectId(videoId)) {            
+        throw new ApiErrors(400, "Invalid video ID");
+     }
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+        throw new ApiErrors(404, "Video not found");
+    }
+        if (video.ownerofvideo.toString() !== req.user._id.toString()) {    
+        throw new ApiErrors(403, "Unauthorized to delete this video");
+    }
+    await Video.findByIdAndDelete(videoId);
+
+    await Promise.all([
+        Like.deleteMany({ video: videoId }),
+        Comment.deleteMany({ video: videoId }),
+        Playlist.updateMany(
+            { videos: videoId },
+            {
+                $pull: { videos: videoId },
+                $inc: { totalVideos: -1 } //here we are using $pull operator to remove the videoId from the videos array of the playlist and $inc operator to decrement the totalVideos count by 1 in the playlist, isse hum apne database me consistency maintain kar sakte hai aur ensure kar sakte hai ki jab bhi koi video delete ho to uska reference playlist se bhi remove ho jaye aur totalVideos count bhi sahi rahe
+            }
+        )
+    ]);
+
+    await Promise.all([//here we are using promise all to delete the video file and thumbnail from cloudinary in parallel, isse hum apne code ko optimize kar sakte hai aur dono delete operations ke complete hone ka wait kar sakte hai, agar dono delete operations complete ho jate hai to hume deleteFromCloudinary function ke result me unka result mil jayega, agar kisi bhi delete operation me error aata hai to promise all usko catch kar lega aur hume error handle karne ka mauka milega
+        deleteFromCloudinary(video.videoFile),
+        deleteFromCloudinary(video.thumbnail)
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Video deleted successfully")
+    );
+});
