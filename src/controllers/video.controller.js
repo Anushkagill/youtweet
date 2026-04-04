@@ -5,6 +5,9 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"
 import { ApiErrors } from "../utils/ApiErrors.js"
+import { Like } from "../models/like.model.js"
+import { Comment } from "../models/comment.model.js"
+import { Playlist } from "../models/playlist.model.js"  
 import fs from "fs";
 
 
@@ -500,3 +503,36 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         )
     );
 });
+
+const updateVideoViews = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiErrors(400, "Invalid video id")
+    }
+
+    const updatedVideo = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $inc: {views: 1}
+        },
+        {new: true}
+    )
+
+    if(!updatedVideo){
+        throw new ApiErrors(404, "Video not found")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,updatedVideo,"Video views updated successfully"))
+})
+
+export {
+    getAllVideos,
+    publishAVideo,
+    getVideoById,
+    updateVideo,
+    deleteVideo,
+    togglePublishStatus,
+    updateVideoViews
+}
