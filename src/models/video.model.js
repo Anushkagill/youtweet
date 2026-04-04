@@ -7,21 +7,23 @@ const videoSchema=new Schema(
             type:String,//cloudinary url
             required:[true,'video is required']
         },
-        thumnail:{
+        thumbnail:{
             type:String,//cloudinary url
             required:true
         },
         title:{
             type:String,
-            required:true
+            required:true,
+            trim:true
         },
         description:{
             type:String,
-            required:true
+            required:true,
+            trim:true
         },
         duration:{
             type:Number,//cloudinary hi video upload krke duration  bhejta h
-            required:true
+            default:0
         },
         views:{
             type:Number,
@@ -29,7 +31,7 @@ const videoSchema=new Schema(
         },
         isPublished:{
             type:Boolean,
-            deafult:true
+            default:true
         },
         ownerofvideo:{
             type:Schema.Types.ObjectId,
