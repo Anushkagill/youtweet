@@ -363,18 +363,25 @@ const getVideoById = asyncHandler(async (req, res) => {
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
+
+    const { videoId } = req.params;
 
     if (!videoId?.trim()) {
         throw new ApiErrors(400, "Video ID is required");
     }
 
-    if (!isValidObjectId(videoId)) {            
+    if (!isValidObjectId(videoId)) {
         throw new ApiErrors(400, "Invalid video ID");
     }
 
-    if (!title?.trim() && !description?.trim() && !req.file) {
-        throw new ApiErrors(400, "At least one field is required to update");
+    let { title, description } = req.body;
+    title = title?.trim();
+    description = description?.trim();
+
+    const thumbnailLocalPath = req.file?.path;
+
+    if (!title && !description && !thumbnailLocalPath) {
+        throw new ApiErrors(400, "At least one field is required");
     }
 
     const video = await Video.findById(videoId);
@@ -382,20 +389,17 @@ const updateVideo = asyncHandler(async (req, res) => {
     if (!video) {
         throw new ApiErrors(404, "Video not found");
     }
-     if (video.ownerofvideo.toString() !== req.user._id.toString()) {
-        throw new ApiErrors(403, "Unauthorized to update this video");
-    }
-    if (title?.trim()) {
-        video.title = title.trim();
+
+    if (video.ownerofvideo.toString() !== req.user._id.toString()) {
+        throw new ApiErrors(403, "Unauthorized");
     }
 
-    if (description?.trim()) {
-        video.description = description.trim();
-    }
+    if (title) video.title = title;
+    if (description) video.description = description;
 
-     if (req.file?.path) {
+    if (thumbnailLocalPath) {
 
-        const uploadedThumbnail = await uploadOnCloudinary(req.file.path);
+        const uploadedThumbnail = await uploadOnCloudinary(thumbnailLocalPath);
 
         if (!uploadedThumbnail?.url) {
             throw new ApiErrors(400, "Thumbnail upload failed");
@@ -410,8 +414,11 @@ const updateVideo = asyncHandler(async (req, res) => {
 
     await video.save({ validateBeforeSave: false });
 
+    const updatedVideoObj = video.toObject();
+    updatedVideoObj.editableStatus = true;
+
     return res.status(200).json(
-        new ApiResponse(200, video, "Video updated successfully")
+        new ApiResponse(200, updatedVideoObj, "Video updated successfully")
     );
 });
 
@@ -453,5 +460,43 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     return res.status(200).json(
         new ApiResponse(200, {}, "Video deleted successfully")
+    );
+});
+
+const togglePublishStatus = asyncHandler(async (req, res) => {
+
+    const { videoId } = req.params;
+
+    if (!videoId?.trim()) {
+        throw new ApiErrors(400, "Video ID is required");
+    }
+
+    if (!isValidObjectId(videoId)) {
+        throw new ApiErrors(400, "Invalid video ID");
+    }
+
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+        throw new ApiErrors(404, "Video not found");
+    }
+
+    if (video.ownerofvideo.toString() !== req.user._id.toString()) {
+        throw new ApiErrors(403, "Unauthorized");
+    }
+
+    video.isPublished = !video.isPublished;
+
+    await video.save({ validateBeforeSave: false });
+
+    const updatedVideoObj = video.toObject();
+    updatedVideoObj.editableStatus = true;
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updatedVideoObj,
+            "Publish status updated successfully"
+        )
     );
 });
