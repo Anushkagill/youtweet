@@ -26,7 +26,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const limitNumber = Math.max(1, parseInt(limit));//converting to parseint as we are getting string from query params and we need number for pagination, also using math.max to make sure that limit is at least 1
 
     if (userId && !isValidObjectId(userId)) {
-        throw new ApiError(400, "Invalid user id");
+        throw new ApiErrors(400, "Invalid user id");
     }//here we are checking if userId is provided and if it is valid object id or not, if not then we are throwing error
 
     const matchStage = { isPublished: true };//we only want to fetch published videos, so we are adding this condition in match stage of aggregation pipeline
@@ -167,35 +167,33 @@ const publishAVideo = asyncHandler(async (req, res) => {
      files on our server after uploading them on cloudinary, isliye hum cleanup function ka use 
      kar rahe hai taki upload ke baad local files ko delete kar sake, isse hum apne server ki 
      storage ko bhi optimize kar sakte hai aur unnecessary files ko delete kar sakte hai*/
+    if (!videoLocalPath) {
+        throw new ApiErrors(400, "Video file is required");
+    }
+
+    if (!thumbnailLocalPath) {
+        throw new ApiErrors(400, "Thumbnail is required");
+    }
+
     const cleanupFiles = () => {
-        try {
-            // Check if the local files exist before trying to delete them
-            if (videoLocalPath && fs.existsSync(videoLocalPath)) {
-                fs.unlinkSync(videoLocalPath);
-            }
-            // Check if the local files exist before trying to delete them
-            if (thumbnailLocalPath && fs.existsSync(thumbnailLocalPath)) {
-                fs.unlinkSync(thumbnailLocalPath);
-            }
-        } catch (err) {
-            console.error("Cleanup error:", err.message);
-        }//yaha pe humne try catch block ka use kiya hai taki agar cleanup ke time pe koi error aaye to usko catch kar sake aur console me log kar sake, isse hum apne application ke errors ko handle kar sakte hai aur debugging me bhi help milegi
-    };
-
-
-    try {
-
-        if (!title?.trim()) {
-            throw new ApiErrors(400, "Title is required");
+        if (videoLocalPath && fs.existsSync(videoLocalPath)) {  //check if the file exists
+            fs.unlinkSync(videoLocalPath)
         }
-
-        if (!description?.trim()) {
-            throw new ApiErrors(400, "Description is required");
+        if (thumbnailLocalPath && fs.existsSync(thumbnailLocalPath)) {
+            fs.unlinkSync(thumbnailLocalPath)
         }
+    }
 
-        if (!videoLocalPath || !thumbnailLocalPath) {
-            throw new ApiErrors (400, "Video and thumbnail are required");
-        }
+
+    if (!title?.trim()) {
+        cleanupFiles()
+        throw new ApiErrors(400, "Title is required");
+    }
+
+    if (!description?.trim()) {
+        cleanupFiles()
+        throw new ApiErrors(400, "Description is required");
+    }
 
         /* promise all is used to run multiple asynchronous operations in parallel and 
         wait for all of them to complete before proceeding, here we are uploading both 
@@ -230,31 +228,22 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
         return res.status(201).json(
             new ApiResponse(201, publishedVideo, "Video published successfully")
-        );
-
-    } catch (error) {
-        throw error;
-
-    } finally {
-        cleanupFiles();
-    }//finally block is used to execute the cleanupFiles function regardless of whether the try block succeeded or the catch block caught an error, isse hum ensure kar sakte hai ki cleanupFiles function hamesha execute hoga aur local files delete ho jayenge, chahe video publish successful ho ya nahi, isse hum apne server ki storage ko optimize kar sakte hai aur unnecessary files ko delete kar sakte hai
-});
+        ); 
+});     
 
 const getVideoById = asyncHandler(async (req, res) => {
 
     const { videoId } = req.params;
 
     if (!videoId?.trim()) {
-        throw new ApiError(400, "Video ID is required");
+        throw new ApiErrors(400, "Video ID is required");
     }
 
-    if (!isValidObjectId(videoId)) {
-        throw new ApiError(400, "Invalid video ID");
+    if (!isValidObjectId(videoId)) {            
+        throw new ApiErrors(400, "Invalid video ID");
     }
 
-    await Video.findByIdAndUpdate(videoId, {
-        $inc: { views: 1 } 
-    });
+    //TODO: TO ADD INCREASING VIEWS COUNT LOGIC HERE 
 
     const video = await Video.aggregate([
 
