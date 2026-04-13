@@ -210,7 +210,45 @@ const updateComment = asyncHandler(async (req, res) => {
 })
 
 const deleteComment = asyncHandler(async (req, res) => {
-    // TODO: delete a comment
+    const { commentId } = req.params
+
+    if (!commentId || !mongoose.Types.ObjectId.isValid(commentId)) {
+        throw new ApiError(400, "Invalid comment id")
+    }
+
+    const comment = await Comment.findById(commentId)
+
+    if (!comment) {
+        throw new ApiError(404, "Comment not found")
+    }
+
+    const video = await Video.findById(comment.video).select("owner")
+    //comment ke andar video field h jisme video ka id h, us video id se video document find karna
+    //  h, aur usme se owner field select karna h taki hume pata chale ki video ka owner kaun hai
+
+    if (!video) {
+        throw new ApiError(404, "Video not found")
+    }
+
+    const userId = req.user._id.toString()
+    //string me convert karna isliye zaruri h kyunki video.owner aur comment.owner dono mongoose object id h, aur unko string me convert karke hi compare karna h
+
+    const isCommentOwner = comment.owner.toString() === userId
+    const isVideoOwner = video.owner.toString() === userId
+    //comment delete karne ke liye ya to comment ka owner hona chahiye ya video ka owner hona chahiye, dono me se koi ek condition satisfy hone chahiye, agar dono condition satisfy nhi hoti to user ko unauthorized error dena h
+
+    if (!isCommentOwner && !isVideoOwner) {
+        throw new ApiError(403, "Not authorized to delete this comment")
+    }
+
+    await Promise.all([
+        Comment.deleteOne({ _id: commentId }),
+        Like.deleteMany({ comment: commentId })
+    ])
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Comment deleted successfully")
+    )
 })
 
 export {
