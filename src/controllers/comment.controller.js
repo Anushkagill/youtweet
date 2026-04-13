@@ -1,6 +1,6 @@
 import mongoose from "mongoose"
 import {Comment} from "../models/comment.model.js"
-import {ApiError} from "../utils/ApiError.js"
+import {ApiErrors} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {Video} from "../models/video.model.js"
@@ -12,7 +12,7 @@ const getVideoComments = asyncHandler(async (req,res) => {
 
 
     if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
-        throw new ApiError(400, "Invalid video id")
+        throw new ApiErrors(400, "Invalid video id")
     }
 
     const currentUserId = new mongoose.Types.ObjectId(req.user._id)
@@ -107,17 +107,17 @@ const addComment = asyncHandler(async (req, res) => {
     const { content } = req.body
 
     if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
-        throw new ApiError(400, "Invalid video id")
+        throw new ApiErrors(400, "Invalid video id")
     }
 
     const videoExists = await Video.exists({ _id: videoId })
 
     if (!videoExists) {
-        throw new ApiError(404, "Video not found")
+        throw new ApiErrors(404, "Video not found")
     }
 
     if (!content || !content.trim()) {
-        throw new ApiError(400, "Comment content is required")
+        throw new ApiErrors(400, "Comment content is required")
     }
 
     const comment = await Comment.create({
@@ -127,7 +127,7 @@ const addComment = asyncHandler(async (req, res) => {
     })
 
     if (!comment) {
-        throw new ApiError(500, "Failed to add comment")
+        throw new ApiErrors(500, "Failed to add comment")
     }
     
     // if we change owner of comment to full object instead of just id, we need to convert it to object first otherwise mongoose will automatically revert it back to id
@@ -156,11 +156,11 @@ const updateComment = asyncHandler(async (req, res) => {
     const { content } = req.body
 
     if (!commentId || !mongoose.Types.ObjectId.isValid(commentId)) {
-        throw new ApiError(400, "Invalid comment id")
+        throw new ApiErrors(400, "Invalid comment id")
     }
 
     if (!content || !content.trim()) {
-        throw new ApiError(400, "Content is required")
+        throw new ApiErrors(400, "Content is required")
     }
 
     const updatedComment = await Comment.findOneAndUpdate(
@@ -180,7 +180,7 @@ const updateComment = asyncHandler(async (req, res) => {
     )
 
     if (!updatedComment) {
-        throw new ApiError(404, "Comment not found or unauthorized")
+        throw new ApiErrors(404, "Comment not found or unauthorized")
     }
 
     const commentObj = updatedComment.toObject()
@@ -213,13 +213,13 @@ const deleteComment = asyncHandler(async (req, res) => {
     const { commentId } = req.params
 
     if (!commentId || !mongoose.Types.ObjectId.isValid(commentId)) {
-        throw new ApiError(400, "Invalid comment id")
+        throw new ApiErrors(400, "Invalid comment id")
     }
 
     const comment = await Comment.findById(commentId)
 
     if (!comment) {
-        throw new ApiError(404, "Comment not found")
+        throw new ApiErrors(404, "Comment not found")
     }
 
     const video = await Video.findById(comment.video).select("owner")
@@ -227,7 +227,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     //  h, aur usme se owner field select karna h taki hume pata chale ki video ka owner kaun hai
 
     if (!video) {
-        throw new ApiError(404, "Video not found")
+        throw new ApiErrors(404, "Video not found")
     }
 
     const userId = req.user._id.toString()
@@ -238,7 +238,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     //comment delete karne ke liye ya to comment ka owner hona chahiye ya video ka owner hona chahiye, dono me se koi ek condition satisfy hone chahiye, agar dono condition satisfy nhi hoti to user ko unauthorized error dena h
 
     if (!isCommentOwner && !isVideoOwner) {
-        throw new ApiError(403, "Not authorized to delete this comment")
+        throw new ApiErrors(403, "Not authorized to delete this comment")
     }
 
     await Promise.all([
