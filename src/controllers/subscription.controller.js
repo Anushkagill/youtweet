@@ -106,7 +106,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         limit: Number(limit)
     }
 
-    
+
     const subscribers = await Subscription.aggregatePaginate(
         Subscription.aggregate(pipeline),
         options
@@ -120,6 +120,63 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
     const { subscriberId } = req.params
+    const { page = 1, limit = 10 } = req.query
+
+    if (!subscriberId || !mongoose.Types.ObjectId.isValid(subscriberId)) {
+        throw new ApiErrors (400, "Invalid subscriber id")
+    }
+
+    const pipeline = [
+        {
+            $match: {
+                subscriber: new mongoose.Types.ObjectId(subscriberId)
+            }
+        },
+        {
+            $sort: {
+                createdAt: -1
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "channel",
+                foreignField: "_id",
+                as: "channel",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $unwind: "$channel"
+        },
+        {
+            $project: {
+                channel: 1
+            }
+        }
+    ]
+
+    const options = {
+        page: Number(page),
+        limit: Number(limit)
+    }
+
+    const subscribedChannels = await Subscription.aggregatePaginate(
+        Subscription.aggregate(pipeline),
+        options
+    )
+
+    return res.status(200).json(
+        new ApiResponse(200, subscribedChannels, "Subscribed channels fetched successfully")
+    )
 })
 
 export {
