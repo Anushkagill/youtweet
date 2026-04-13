@@ -60,5 +60,6 @@ likeSchema.index(
     { unique: true, partialFilterExpression: { tweet: { $exists: true } } }
 );
 //ye indexes ensure karte hai ki ek user ek hi video, comment, ya tweet ko like kar sakta hai, aur agar wo try karta hai toh usko duplicate key error milega
+//means agar ek user ne already kisi video ko like kar diya hai toh wo usi video ko dobara like nahi kar sakta, agar try karega toh usko duplicate key error milega jiska code 11000 hoga
 
 export const Like=mongoose.model("Like",likeSchema) 
