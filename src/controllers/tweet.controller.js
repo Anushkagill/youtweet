@@ -52,8 +52,63 @@ const getUserTweets = asyncHandler(async (req, res) => {
 })
 
 const updateTweet = asyncHandler(async (req, res) => {
-    //TODO: update tweet
-})
+    const { tweetId } = req.params;
+
+    if (!tweetId || !mongoose.Types.ObjectId.isValid(tweetId)) {
+        throw new ApiErrors(400, "Invalid tweet id");
+    }
+
+    const { content } = req.body;
+
+    if (!content?.trim()) {
+        throw new ApiErrors(400, "Content is required");
+    }
+
+    if (!req.user?._id) {
+        throw new ApiErrors(401, "Unauthorized");
+    }
+
+    const updatedTweet = await Tweet.findOneAndUpdate(
+        {
+            _id: tweetId,
+            owner: req.user._id
+        },
+        {
+            $set: { content: content.trim() }
+        },
+        {
+            new: true
+        }
+    );
+
+    if (!updatedTweet) {
+        throw new ApiErrors(403, "Forbidden: Cannot update this tweet");
+    }
+
+    const responseTweet = updatedTweet.toObject();
+
+    responseTweet.likesCount = await Like.countDocuments({
+        tweet: updatedTweet._id
+    });
+
+    responseTweet.likedStatus = !!(await Like.exists({//!! to convert to boolean matlab true or false 
+        tweet: updatedTweet._id,
+        likedBy: req.user._id
+    }));
+
+    responseTweet.editableStatus = true;
+
+    responseTweet.owner = {
+        _id: req.user._id,
+        username: req.user.username,
+        fullName: req.user.fullName,
+        avatar: req.user.avatar
+    };
+
+    return res.status(200).json(
+        new ApiResponse(200, responseTweet, "Tweet updated successfully")
+    );
+});
 
 const deleteTweet = asyncHandler(async (req, res) => {
     //TODO: delete tweet
