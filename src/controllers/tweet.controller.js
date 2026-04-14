@@ -111,8 +111,33 @@ const updateTweet = asyncHandler(async (req, res) => {
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
-    //TODO: delete tweet
-})
+    const { tweetId } = req.params;
+
+    if (!tweetId || !mongoose.Types.ObjectId.isValid(tweetId)) {
+        throw new ApiErrors(400, "Invalid tweet id");
+    }
+
+    if (!req.user?._id) {
+        throw new ApiErrors(401, "Unauthorized");
+    }
+
+    const deletedTweet = await Tweet.findOneAndDelete({
+        _id: tweetId,
+        owner: req.user._id
+    });
+
+    if (!deletedTweet) {
+        throw new ApiErrors(404, "Tweet not found or forbidden");
+    }
+
+    await Like.deleteMany({
+        tweet: deletedTweet._id
+    });//delete all the likes associated with the deleted tweet
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Tweet deleted successfully")
+    );
+});
 
 export {
     createTweet,
