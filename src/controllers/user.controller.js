@@ -489,7 +489,7 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
 })
 
 
-const getWatchHistory=asyncHandler(async(req,res)=>{
+/*const getWatchHistory=asyncHandler(async(req,res)=>{
     // GOAL:
     // Logged-in user ka watch history return karna
     // Lekin sirf video IDs nahi,
@@ -593,7 +593,7 @@ const getWatchHistory=asyncHandler(async(req,res)=>{
     return res
     .status(200)
     .json(new ApiResponse(200,user[0].watchHistory,"watch history fetched successfully"))
-})
+})*/
 
 export {
     registerUser,
