@@ -180,7 +180,7 @@ const logoutUser=asyncHandler(async(req,res)=>{
         req.user._id,
         {
             $unset:{
-                refresh:1//refreshToken:undefined
+                refreshToken:1
             }
         },
         {
@@ -225,17 +225,17 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
             httpOnly:true,
             secure:process.env.NODE_ENV === "production"
         }
-        const {accessToken,newrefreshToken}=await generateAccessAndRefreshTokens(user)
+        const {accessToken,refreshToken}=await generateAccessAndRefreshTokens(user)
     
         return res
         .status(200)
         .cookie("accessToken",accessToken,options)
-        .cookie("refreshToken",newrefreshToken,options)
+        .cookie("refreshToken",refreshToken,options)
         .json(
             new ApiResponse(
                 200,
                 {
-                    accessToken,refreshToken:newrefreshToken
+                    accessToken,refreshToken
                 },
                 "access token refreshed"
     

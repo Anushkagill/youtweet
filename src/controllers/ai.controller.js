@@ -1,10 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+import fetch from "node-fetch";
 
 export const generateCaption = async (req, res) => {
   try {
-    console.log("🔥 API KEY:", process.env.GEMINI_API_KEY);
+    console.log("🔥 AI Controller Hit");
 
     const { text } = req.body;
 
@@ -15,40 +13,64 @@ export const generateCaption = async (req, res) => {
       });
     }
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+    const response = await fetch("https://api.deepai.org/api/text-generator", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Api-key": "quickstart-QUICKSTART",
+      },
+      body: new URLSearchParams({
+        text: `
+Generate content for a video post.
+
+Input: ${text}
+
+Give output in this format:
+Title:
+Description:
+        `,
+      }),
     });
 
-    const prompt = `
-Generate a catchy social media caption.
-Add 3-5 hashtags.
-Keep it short.
+    const data = await response.json();
 
-Content: ${text}
-`;
+    console.log("🔥 DeepAI Response:", data);
 
-    const result = await model.generateContent(prompt);
+    let output = data?.output?.trim();
 
-    console.log("🔥 RAW RESULT:", JSON.stringify(result, null, 2));
-
-    const caption =
-      result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!caption) {
-      throw new Error("No caption generated");
+    // fallback
+    if (!output) {
+      return res.json({
+        success: true,
+        title: text,
+        description: `${text} - Watch now!`,
+      });
     }
 
-    return res.status(200).json({
+    let title = "";
+    let description = "";
+
+    if (output.includes("Description:")) {
+      const parts = output.split("Description:");
+      title = parts[0].replace("Title:", "").trim();
+      description = parts[1].trim();
+    } else {
+      title = output;
+      description = "Watch this video for more details!";
+    }
+
+    return res.json({
       success: true,
-      caption,
+      title,
+      description,
     });
 
   } catch (error) {
-    console.error("❌ ERROR DETAILS:", JSON.stringify(error, null, 2));
+    console.error("❌ ERROR:", error.message);
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Error generating caption",
+      message: "Error generating content",
     });
   }
 };
