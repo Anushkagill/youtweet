@@ -467,6 +467,43 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     );
 });
 
+const togglePlaylistPublicStatus = asyncHandler(async (req, res) => {
+    const {playlistId} = req.params
+
+    if(!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)){
+        throw new ApiErrors(400, "Invalid playlist id")
+    }
+
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized request");
+    }
+
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+        {
+            _id: playlistId,
+            owner: userId
+        },
+        [
+            {
+                $set: {
+                    isPublic: {$not: "$isPublic"}
+                }
+            },
+        ],
+        {new: true}
+    )
+
+    if(!updatedPlaylist){
+        throw new ApiErrors(404, "No playlist found or Forbidden request")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, updatedPlaylist, "Public status toggled successfully"))
+})
+
 export {
     createPlaylist,
     getUserPlaylists,
@@ -474,5 +511,6 @@ export {
     addVideoToPlaylist,
     removeVideoFromPlaylist,
     deletePlaylist,
-    updatePlaylist
+    updatePlaylist,
+    togglePlaylistPublicStatus
 }
