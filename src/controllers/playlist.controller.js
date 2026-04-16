@@ -48,9 +48,54 @@ const createPlaylist = asyncHandler(async (req, res) => {
 });
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
-    const {userId} = req.params
-    //TODO: get user playlists
-})
+    const { userId, limit = 10, cursor } = req.query;
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ApiErrors(400, "Invalid user id");
+    }
+
+    const matchStage = {
+        owner: new mongoose.Types.ObjectId(userId)
+    };
+
+    if (!req.user || req.user._id.toString() !== userId) {
+        matchStage.isPublic = true;
+    }//  If user is not the owner, only fetch public playlists
+
+
+    if (cursor) {
+        matchStage.createdAt = {
+            $lt: new Date(cursor)
+        };//lt means less than, so we are fetching playlists which are created before the cursor date, this is for pagination, when client will send nextCursor in the request then we will fetch playlists which are created before that nextCursor date, this way we can fetch next set of playlists for pagination
+    }
+
+    //  Limit control (1–50)
+    const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+
+    // 7. Fetch playlists
+    const playlists = await Playlist.find(matchStage)
+        .sort({ createdAt: -1 })
+        .limit(limitNumber)
+        .select("name description isPublic totalVideos createdAt");
+
+
+    const nextCursor =
+        playlists.length === limitNumber
+            ? playlists[playlists.length - 1].createdAt
+            : null;
+
+            
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                playlists,
+                nextCursor
+            },
+            "Playlists fetched successfully"
+        )
+    );
+});
 
 const getPlaylistById = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
