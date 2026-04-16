@@ -37,14 +37,14 @@ app.use(cookieParser())
 
 import userRouter from './routes/user.routes.js';
 import videoRouter from "./routes/video.routes.js"
-import healthcheckRouter from "./routes/healthcheck.router.js"
-import tweetRouter from "./routes/tweet.router.js"
+import healthcheckRouter from "./routes/healthcheck.route.js"
+import tweetRouter from "./routes/tweet.route.js"
 import subscriptionRouter from "./routes/subscription.route.js"
-import commentRouter from "./routes/comment.routes.js"
-import likeRouter from "./routes/like.routes.js"
-import dashboardRouter from "./routes/dashboard.routes.js"
-import playlistRouter from "./routes/playlist.routes.js"
-import watchHistoryRouter from "./routes/watchHistory.routes.js"
+import commentRouter from "./routes/comment.route.js"
+import likeRouter from "./routes/like.route.js"
+import dashboardRouter from "./routes/dashboard.route.js"
+import playlistRouter from "./routes/playlist.route.js"
+import watchHistoryRouter from "./routes/watchHistory.route.js"
 import aiRoutes from "./routes/ai.routes.js";
 
 
@@ -60,7 +60,7 @@ app.use("/api/v1/likes",likeRouter)
 app.use("/api/v1/dashboard",dashboardRouter)
 app.use("/api/v1/playlists",playlistRouter)
 app.use("/api/v1/watch-history",watchHistoryRouter)
-app.use("/api/v1/ai",aiRoutes)
+app.use("/api/v1/ai", aiRoutes)
 app.use(errorHandler)
 
 export {app}
