@@ -3,6 +3,7 @@ import {Playlist} from "../models/playlist.model.js"
 import {ApiErrors} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import {Video} from "../models/video.model.js"
 
 
 const createPlaylist = asyncHandler(async (req, res) => {
@@ -254,9 +255,76 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 });
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
-    const {playlistId, videoId} = req.params
-})
+    const { playlistId, videoId } = req.params;
 
+    if (!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new ApiErrors(400, "Invalid playlist id");
+    }
+
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiErrors(400, "Invalid video id");
+    }
+
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized request");
+    }
+
+ 
+    const playlistExists = await Playlist.exists({
+        _id: playlistId,
+        owner: userId
+    });
+
+    if (!playlistExists) {
+        throw new ApiErrors(404, "Playlist not found or forbidden");
+    }
+
+    // 4. Check video existence
+    const videoExists = await Video.exists({ _id: videoId });
+
+    if (!videoExists) {
+        throw new ApiErrors(404, "Video does not exist");
+    }
+
+    // 5. Atomic update (IMPORTANT)
+    //TOCTOU = Time Of Check vs Time Of Use
+    //This is because inn dono kaamo(checking ownership and updating playlist) ke beech agar koi aur API call hoti hai aur vo owner 
+    //change kar deti hai toh user kisi aur owner ki playlist ko update kar dega
+
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+        //findoneadnupdate atomic operation h means No other operation can come in between
+        {
+            _id: playlistId,
+            owner: userId,
+            videos: { $ne: new mongoose.Types.ObjectId(videoId) }
+            //ne means not equal, so we are checking that videoId is not already present in the videos array of the playlist, agar videoId already hai toh update nahi karna hai aur error throw karna hai ki video already exists in playlist, isse hum ensure karte hai ki ek hi video ko playlist me multiple times add na kiya ja sake
+        },
+        {
+            $addToSet: { videos: new mongoose.Types.ObjectId(videoId) },
+            $inc: { totalVideos: 1 }
+        },
+        { new: true }
+    );
+
+    // 6. If update failed
+    if (!updatedPlaylist) {
+        throw new ApiErrors(
+            400,
+            "Video already exists in playlist or unauthorized request"
+        );
+    }
+
+    // 7. Response
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updatedPlaylist,
+            "Video added to playlist successfully"
+        )
+    );
+});
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     const {playlistId, videoId} = req.params
     // TODO: remove video from playlist
