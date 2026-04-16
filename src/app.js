@@ -45,6 +45,7 @@ import likeRouter from "./routes/like.routes.js"
 import dashboardRouter from "./routes/dashboard.routes.js"
 import playlistRouter from "./routes/playlist.routes.js"
 import watchHistoryRouter from "./routes/watchHistory.routes.js"
+import aiRoutes from "./routes/ai.routes.js";
 
 
 //routes declaration
@@ -59,7 +60,7 @@ app.use("/api/v1/likes",likeRouter)
 app.use("/api/v1/dashboard",dashboardRouter)
 app.use("/api/v1/playlists",playlistRouter)
 app.use("/api/v1/watch-history",watchHistoryRouter)
-
+app.use("/api/v1/ai",aiRoutes)
 app.use(errorHandler)
 
 export {app}
