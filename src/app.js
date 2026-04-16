@@ -1,6 +1,7 @@
 import express from "express"
 import cors from "cors"
 import cookieParser from "cookie-parser"//cookie parser is a middleware it is used to parse the cookies that are sent in the request headers. It allows you to easily access and manipulate the cookies in your Express application. By using cookie-parser, you can read the cookies sent by the client, set new cookies, and manage cookie-related functionality in your server-side code.
+import { errorHandler } from './middlewares/error.middleware.js'
 
 const app=express()
 
@@ -35,11 +36,30 @@ app.use(cookieParser())
 //routes import 
 
 import userRouter from './routes/user.routes.js';
+import videoRouter from "./routes/video.routes.js"
+import healthcheckRouter from "./routes/healthcheck.router.js"
+import tweetRouter from "./routes/tweet.router.js"
+import subscriptionRouter from "./routes/subscription.route.js"
+import commentRouter from "./routes/comment.routes.js"
+import likeRouter from "./routes/like.routes.js"
+import dashboardRouter from "./routes/dashboard.routes.js"
+import playlistRouter from "./routes/playlist.routes.js"
+import watchHistoryRouter from "./routes/watchHistory.routes.js"
 
 
 //routes declaration
 
 app.use("/api/v1/users",userRouter)
+app.use("/api/v1/videos",videoRouter)
+app.use("/api/v1/health",healthcheckRouter)
+app.use("/api/v1/tweets",tweetRouter)
+app.use("/api/v1/subscriptions",subscriptionRouter)
+app.use("/api/v1/comments",commentRouter)
+app.use("/api/v1/likes",likeRouter)
+app.use("/api/v1/dashboard",dashboardRouter)
+app.use("/api/v1/playlists",playlistRouter)
+app.use("/api/v1/watch-history",watchHistoryRouter)
 
+app.use(errorHandler)
 
 export {app}
