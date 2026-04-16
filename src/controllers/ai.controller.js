@@ -4,7 +4,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export const generateCaption = async (req, res) => {
   try {
-    console.log("🔥 AI Controller Hit");
+    console.log("🔥 API KEY:", process.env.GEMINI_API_KEY);
 
     const { text } = req.body;
 
@@ -20,16 +20,23 @@ export const generateCaption = async (req, res) => {
     });
 
     const prompt = `
-      Generate a catchy social media caption.
-      Add 3-5 hashtags.
-      Keep it short.
+Generate a catchy social media caption.
+Add 3-5 hashtags.
+Keep it short.
 
-      Content: ${text}
-    `;
+Content: ${text}
+`;
 
     const result = await model.generateContent(prompt);
 
-    const caption = result.response.text();
+    console.log("🔥 RAW RESULT:", JSON.stringify(result, null, 2));
+
+    const caption =
+      result.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!caption) {
+      throw new Error("No caption generated");
+    }
 
     return res.status(200).json({
       success: true,
@@ -37,11 +44,11 @@ export const generateCaption = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ ERROR:", error);
+    console.error("❌ ERROR DETAILS:", JSON.stringify(error, null, 2));
 
     return res.status(500).json({
       success: false,
-      message: "Error generating caption",
+      message: error.message || "Error generating caption",
     });
   }
 };
