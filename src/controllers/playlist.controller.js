@@ -415,10 +415,57 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 });
 
 const updatePlaylist = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params
-    const {name, description} = req.body
-    //TODO: update playlist
-})
+    const { playlistId } = req.params;
+
+    if (!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new ApiErrors(400, "Invalid playlist id");
+    }
+    const { name, description } = req.body;
+
+    const newName = name?.trim();
+    const newDescription = description?.trim();
+
+    // 3. Ensure at least one field is provided
+    if (!newName && !newDescription) {
+        throw new ApiErrors(400, "At least one field is required");
+    }
+
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized request");
+    }
+
+    const updateFields = {};
+    if (newName) updateFields.name = newName;
+    if (newDescription) updateFields.description = newDescription;
+
+    // 5. Atomic update
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+        {
+            _id: playlistId,
+            owner: userId
+        },
+        {
+            $set: updateFields
+        },
+        { new: true }
+    );
+
+    // 6. Handle failure
+    if (!updatedPlaylist) {
+        throw new ApiErrors(404, "Playlist not found or unauthorized");
+    }
+
+    // 7. Response
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updatedPlaylist,
+            "Playlist updated successfully"
+        )
+    );
+});
 
 export {
     createPlaylist,
