@@ -325,11 +325,62 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
         )
     );
 });
-const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
-    const {playlistId, videoId} = req.params
-    // TODO: remove video from playlist
 
-})
+
+const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
+    const { playlistId, videoId } = req.params;
+
+    if (!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new ApiErrors(400, "Invalid playlist id");
+    }
+
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiErrors(400, "Invalid video id");
+    }
+
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized request");
+    }
+
+    const playlistExists = await Playlist.exists({
+        _id: playlistId,
+        owner: userId
+    });
+
+    if (!playlistExists) {
+        throw new ApiErrors(404, "Playlist not found or forbidden");
+    }
+
+
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+        {
+            _id: playlistId,
+            owner: userId,
+            videos: new mongoose.Types.ObjectId(videoId) // ensure video exists in playlist
+        },
+        {
+            $pull: { videos: new mongoose.Types.ObjectId(videoId) },
+            $inc: { totalVideos: -1 }//
+        },
+        { new: true }
+    );
+
+
+    if (!updatedPlaylist) {
+        throw new ApiErrors(404, "Video does not exist in this playlist");
+    }
+
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updatedPlaylist,
+            "Video removed from playlist successfully"
+        )
+    );
+});
 
 const deletePlaylist = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
