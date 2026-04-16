@@ -383,9 +383,36 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 });
 
 const deletePlaylist = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params
-    // TODO: delete playlist
-})
+    const { playlistId } = req.params;
+
+    if (!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new ApiErrors(400, "Invalid playlist id");
+    }
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized request");
+    }
+
+    // 2. Atomic delete (IMPORTANT)
+    const deletedPlaylist = await Playlist.findOneAndDelete({
+        _id: playlistId,
+        owner: userId
+    });
+
+    // 3. If not found or not owner
+    if (!deletedPlaylist) {
+        throw new ApiErrors(404, "Playlist not found or forbidden");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            deletedPlaylist,
+            "Playlist deleted successfully"
+        )
+    );
+});
 
 const updatePlaylist = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
