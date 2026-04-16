@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/ApiError.js";
+import { ApiErrors } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -11,13 +11,13 @@ const getChannelStats = asyncHandler(async (req, res) => {
 
     // Validate channelId
     if (!channelId || !mongoose.Types.ObjectId.isValid(channelId)) {
-        throw new ApiError(400, "Invalid channel id");
+        throw new ApiErrors(400, "Invalid channel id");
     }
 
     // exists because it only returns true/false dont fetch entire data or document so fast and easy
     const channelExists = await User.exists({ _id: channelId });
     if (!channelExists) {
-        throw new ApiError(404, "Channel not found");
+        throw new ApiErrors(404, "Channel not found");
     }
 
     // 3. Get total subscribers
@@ -138,7 +138,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
 
 
     if (!channelId || !mongoose.Types.ObjectId.isValid(channelId)) {
-        throw new ApiError(400, "Invalid channel id");
+        throw new ApiErrors(400, "Invalid channel id");
     }//here checking shi channel id hai ya nahi kyuki agar channel id hi invalid hoga to aage ke steps me bhi error aayega to pehle hi check kar lete hai taki unnecessary processing na ho aur client ko jaldi se error response mil jaye
 
 
@@ -146,7 +146,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     //User.exists() is more efficient than User.findById() when we only need to check for existence, as it doesn't retrieve the entire document, just checks if a matching document exists and returns true/false.
     //User h ,user nahi that  means yaha jo User h wo mongoose model hai jisme humne user schema define kiya hai aur usme se hum check kar rahe hai ki kya koi user hai jiska _id channelId ke barabar hai ya nahi, agar nahi hai to hume 404 error throw karna hai ki channel not found
     if (!channelExists) {
-        throw new ApiError(404, "Channel not found");
+        throw new ApiErrors(404, "Channel not found");
     }
 
     //  Base filter: owner = channelId -> we want to fetch videos of this channel only
