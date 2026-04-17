@@ -29,7 +29,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
     const [stats] = await Video.aggregate([
         {
             $match: {
-                owner: new mongoose.Types.ObjectId(channelId),
+                ownerofvideo: new mongoose.Types.ObjectId(channelId),
                 isPublished: true
             }
         },
@@ -150,7 +150,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     }
 
     //  Base filter: owner = channelId -> we want to fetch videos of this channel only
-    const filter = { owner: channelId };
+    const filter = { ownerofvideo: channelId };
 
     // because channel owner can see all videos (published and unpublished) but other users can only see published videos, so we need to add this condition to our filter
     if (channelId !== req.user._id.toString()) {

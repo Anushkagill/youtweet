@@ -191,7 +191,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                     {
                         $lookup: {
                             from: "users",
-                            localField: "owner",
+                            localField: "ownerofvideo",
                             foreignField: "_id",
                             as: "owner",
                             //further lookup kyuki ab video ka data mila h or ab video se user ka dta alana h

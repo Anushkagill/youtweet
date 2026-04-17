@@ -20,6 +20,14 @@ const playlistSchema=new Schema(
             type:Schema.Types.ObjectId,
             ref:"User"
         },
+         isPublic:{
+            type:Boolean,
+            default:true
+        },
+        totalVideos:{
+            type:Number,
+            default:0
+        }
     },{
         timestamps:true
     }

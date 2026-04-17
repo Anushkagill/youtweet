@@ -222,7 +222,7 @@ const deleteComment = asyncHandler(async (req, res) => {
         throw new ApiErrors(404, "Comment not found")
     }
 
-    const video = await Video.findById(comment.video).select("owner")
+    const video = await Video.findById(comment.video).select("ownerofvideo")
     //comment ke andar video field h jisme video ka id h, us video id se video document find karna
     //  h, aur usme se owner field select karna h taki hume pata chale ki video ka owner kaun hai
 

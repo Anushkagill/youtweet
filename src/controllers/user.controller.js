@@ -2,9 +2,10 @@ import {asyncHandler} from "../utils/asyncHandler.js";
 import {ApiErrors} from "../utils/ApiErrors.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"
-import {ApiResponse} from "..//utils/ApiResponse.js"
+import {ApiResponse} from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken";
 import fs from "fs"
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens=async(user)=>{
     try{
@@ -92,11 +93,17 @@ const registerUser=asyncHandler(async(req,res)=>{
 
     //const createdUser= await User.findById(user._id).select("-password  -refreshToken")//
 
-    if(!createdUser){
-        if(avatarLocalPath) fs.unlinkSync(avatarLocalPath)
-        if(coverImageLocalPath)fs.unlinkSync(coverImageLocalPath)
-        throw new ApiErrors(500,"something went wrong while registering the user")
+    if (!createdUser) {
+    if (avatarLocalPath && fs.existsSync(avatarLocalPath)) {
+        fs.unlinkSync(avatarLocalPath);
     }
+
+    if (coverImageLocalPath && fs.existsSync(coverImageLocalPath)) {
+        fs.unlinkSync(coverImageLocalPath);
+    }
+
+    throw new ApiErrors(500, "something went wrong while registering the user");
+}
 
     return res.status(201).json(
         new ApiResponse(201,createdUser,"USER REGISTERED",)
@@ -116,7 +123,7 @@ const loginUser=asyncHandler(async(req,res)=>{
     const {email,username,password }=req.body
 
     if(!username?.trim() && !email?.trim()){//username or email dono me se koi ek hona chahiye login ke time pe
-        throw new ApiErrors(400,"username or password is required")
+        throw new ApiErrors(400,"username or email is required")
     }
 
     if(!password?.trim()){//password bhi required hai login ke time pe
@@ -255,6 +262,10 @@ const changeCurrentPassword=asyncHandler(async(req,res)=>{
     if(!newPassword?.trim()) throw new ApiErrors(400, "New Password is required");
 
     const user=await User.findById(req.user?._id).select("+password")
+
+    if (!user) {
+    throw new ApiErrors(404, "User not found");
+}
 
     const isPasswordCorrect=await user.isPasswordCorrect(oldPassword)
 
@@ -456,7 +467,7 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
                 isSubscribed:{
                     $cond:{// $cond = if-else condition
                         // $in = check karta hai value array me exist karti hai ya nahi
-                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+                        if:{$in: [new mongoose.Types.ObjectId(req.user._id), "$subscribers.subscriber"]},
                         then:true,// agar logged-in user ka _id subscribers array ke subscriber field me exist karta hai to isSubscribed true hoga warna false
                         else:false
                     }
@@ -468,7 +479,7 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
             $project:{
                 fullName:1,// 1 means include this field in the result
                 username:1,
-                channelIsSubscribedTo:1,
+                channelsSubscribedToCount:1,
                 isSubscribed:1,
                 avatar:1,
                 coverImage:1,

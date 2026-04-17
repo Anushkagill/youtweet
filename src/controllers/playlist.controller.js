@@ -142,7 +142,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
                     {
                         $lookup: {
                             from: "users",
-                            localField: "owner",
+                            localField: "ownerofvideo",
                             foreignField: "_id",
                             as: "owner",
 //har video ke owner field ke basis pe users collection se matching user ko fetch karo aur usme se
