@@ -15,14 +15,15 @@ import { OAuth2Client } from "google-auth-library";
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const googleLogin = asyncHandler(async (req, res) => {
-    const { token } = req.body;
+    const { token, credential } = req.body;
+    const googleToken = credential || token;
 
-    if (!token) {
+    if (!googleToken) {
         throw new ApiErrors(400, "Google token missing");
     }
 
     const ticket = await googleClient.verifyIdToken({
-        idToken: token,
+        idToken: googleToken,
         audience: process.env.GOOGLE_CLIENT_ID,
     });
 
