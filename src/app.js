@@ -6,7 +6,7 @@ import { errorHandler } from './middlewares/error.middleware.js'
 const app=express()
 
 app.use(cors({
-    origin:process.env.CORS_ORIGIN, //allow requests from this origin, you can specify a specific domain or use "*" to allow all origins. but if credentials:true is set, you cannot use "*" for the origin. You must specify the exact origin(s) that are allowed to access the resources.
+    origin:"http://localhost:5173", //allow requests from this origin, you can specify a specific domain or use "*" to allow all origins. but if credentials:true is set, you cannot use "*" for the origin. You must specify the exact origin(s) that are allowed to access the resources.
     credentials:true // allow cookies to be sent in cross-origin requests,credentials:true is necessary when the client and server are on different domains and you want to allow cookies to be included in the requests.
 }))
 
