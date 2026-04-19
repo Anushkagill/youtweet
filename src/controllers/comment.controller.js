@@ -5,6 +5,8 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {Video} from "../models/video.model.js"
 import {Like} from "../models/like.model.js"
+import {Tweet} from "../models/tweet.model.js"
+import { isValidObjectId } from "mongoose"
 
 const getVideoComments = asyncHandler(async (req,res) => {
     const { page = 1, limit = 10 } = req.query//page 1 ka mtlb h by default page 1 hoga agr client ne page nhi bheja to, same for limit
@@ -210,50 +212,107 @@ const updateComment = asyncHandler(async (req, res) => {
 })
 
 const deleteComment = asyncHandler(async (req, res) => {
-    const { commentId } = req.params
+    const { commentId } = req.params;
 
     if (!commentId || !mongoose.Types.ObjectId.isValid(commentId)) {
-        throw new ApiErrors(400, "Invalid comment id")
+        throw new ApiErrors(400, "Invalid comment id");
     }
 
-    const comment = await Comment.findById(commentId)
+    const comment = await Comment.findById(commentId);
 
     if (!comment) {
-        throw new ApiErrors(404, "Comment not found")
+        throw new ApiErrors(404, "Comment not found");
     }
 
-    const video = await Video.findById(comment.video).select("ownerofvideo")
-    //comment ke andar video field h jisme video ka id h, us video id se video document find karna
-    //  h, aur usme se owner field select karna h taki hume pata chale ki video ka owner kaun hai
+    const userId = req.user._id.toString();
 
-    if (!video) {
-        throw new ApiErrors(404, "Video not found")
+    // ✅ SAFE CHECK
+    const isCommentOwner =
+        comment.owner && comment.owner.toString() === userId;
+
+    let isParentOwner = false;
+
+    // 🔥 VIDEO CASE
+    if (comment.video) {
+        const video = await Video.findById(comment.video).select("owner");
+
+        if (video?.owner) {
+            isParentOwner = video.owner.toString() === userId;
+        }
     }
 
-    const userId = req.user._id.toString()
-    //string me convert karna isliye zaruri h kyunki video.owner aur comment.owner dono mongoose object id h, aur unko string me convert karke hi compare karna h
+    // 🔥 TWEET CASE
+    if (comment.tweet) {
+        const tweet = await Tweet.findById(comment.tweet).select("owner");
 
-    const isCommentOwner = comment.owner.toString() === userId
-    const isVideoOwner = video.owner.toString() === userId
-    //comment delete karne ke liye ya to comment ka owner hona chahiye ya video ka owner hona chahiye, dono me se koi ek condition satisfy hone chahiye, agar dono condition satisfy nhi hoti to user ko unauthorized error dena h
+        if (tweet?.owner) {
+            isParentOwner = tweet.owner.toString() === userId;
+        }
+    }
 
-    if (!isCommentOwner && !isVideoOwner) {
-        throw new ApiErrors(403, "Not authorized to delete this comment")
+    if (!isCommentOwner && !isParentOwner) {
+        throw new ApiErrors(403, "Not authorized to delete this comment");
     }
 
     await Promise.all([
         Comment.deleteOne({ _id: commentId }),
         Like.deleteMany({ comment: commentId })
-    ])
+    ]);
 
     return res.status(200).json(
         new ApiResponse(200, {}, "Comment deleted successfully")
-    )
-})
+    );
+});
+
+const addTweetComment = asyncHandler(async (req, res) => {
+  const { tweetId } = req.params;
+  const { content } = req.body;
+
+  if (!tweetId || !isValidObjectId(tweetId)) {
+    throw new ApiErrors(400, "Invalid tweet ID");
+  }
+
+  if (!content?.trim()) {
+    throw new ApiErrors(400, "Content is required");
+  }
+
+  const tweetExists = await Tweet.exists({ _id: tweetId });
+  if (!tweetExists) {
+    throw new ApiErrors(404, "Tweet not found");
+  }
+
+  const comment = await Comment.create({
+    content: content.trim(),
+    tweet: tweetId,
+    owner: req.user._id,
+  });
+
+  return res.status(200).json(
+    new ApiResponse(200, comment, "Reply added successfully")
+  );
+});
+
+const getTweetComments = asyncHandler(async (req, res) => {
+  const { tweetId } = req.params;
+
+  if (!tweetId || !isValidObjectId(tweetId)) {
+    throw new ApiErrors(400, "Invalid tweet ID");
+  }
+
+  const comments = await Comment.find({ tweet: tweetId })
+  .populate("owner", "username avatar")
+  .sort({ createdAt: -1 });
+
+  return res.status(200).json(
+    new ApiResponse(200, comments, "Replies fetched successfully")
+  );
+});
 
 export {
     getVideoComments, 
     addComment, 
     updateComment,
-     deleteComment
+     deleteComment,
+        addTweetComment,
+        getTweetComments
     }

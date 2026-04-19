@@ -1,11 +1,76 @@
 import {asyncHandler} from "../utils/asyncHandler.js";
 import {ApiErrors} from "../utils/ApiErrors.js"
 import {User} from "../models/user.model.js"
+import {Video} from "../models/video.model.js"
+import {Tweet} from "../models/tweet.model.js"
+import {Comment} from "../models/comment.model.js"
+import {Like} from "../models/like.model.js"
 import {uploadOnCloudinary,deleteFromCloudinary} from "../utils/cloudinary.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken";
 import fs from "fs"
 import mongoose from "mongoose";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const googleLogin = asyncHandler(async (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        throw new ApiErrors(400, "Google token missing");
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const { email, name, picture } = payload;
+
+    let user = await User.findOne({ email });
+
+    // 🔹 Create user if not exists
+    if (!user) {
+        user = await User.create({
+            email,
+            fullName: name,
+            avatar: picture,
+            password: "google-auth", // dummy password
+            username: email.split("@")[0] + Math.floor(Math.random() * 1000)
+        });
+    }
+
+    // 🔥 Use your existing token function
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user);
+
+    const loggedInUser = user.toObject();
+    delete loggedInUser.password;
+    delete loggedInUser.refreshToken;
+
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production"
+    };
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser,
+                    accessToken,
+                    refreshToken
+                },
+                "Google login successful"
+            )
+        );
+});
 
 const generateAccessAndRefreshTokens=async(user)=>{
     try{
@@ -480,6 +545,7 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
                 fullName:1,// 1 means include this field in the result
                 username:1,
                 channelsSubscribedToCount:1,
+                subscribersCount:1,
                 isSubscribed:1,
                 avatar:1,
                 coverImage:1,
@@ -605,7 +671,118 @@ const getUserChannelProfile=asyncHandler(async(req,res)=>{
     .status(200)
     .json(new ApiResponse(200,user[0].watchHistory,"watch history fetched successfully"))
 })*/
+const updateUserProfile = asyncHandler(async (req, res) => {
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
 
+    const updateData = {};
+
+    // 🔹 Basic fields
+    if (req.body.fullName) updateData.fullName = req.body.fullName;
+    if (req.body.username) updateData.username = req.body.username;
+
+    // 🔹 Avatar upload (required field, but only update if new one provided)
+    if (req.files?.avatar?.[0]) {
+        const uploadedAvatar = await uploadOnCloudinary(req.files.avatar[0].path);
+
+        if (!uploadedAvatar?.url) {
+            throw new ApiErrors(400, "Error uploading avatar");
+        }
+
+        updateData.avatar = uploadedAvatar.url;
+    }
+
+    // 🔹 Cover Image upload (optional)
+    if (req.files?.coverImage?.[0]) {
+        const uploadedCover = await uploadOnCloudinary(req.files.coverImage[0].path);
+
+        if (!uploadedCover?.url) {
+            throw new ApiErrors(400, "Error uploading cover image");
+        }
+
+        updateData.coverImage = uploadedCover.url;
+    }
+
+    // 🔹 Remove cover image (when frontend sends empty string)
+    if (req.body.coverImage === "") {
+        updateData.coverImage = "";
+    }
+
+    // 🔹 Update user
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        updateData,
+        { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+        throw new ApiErrors(404, "User not found");
+    }
+
+    return res.status(200).json({
+        success: true,
+        data: updatedUser
+    });
+});
+
+const deleteCurrentUser = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiErrors(401, "Unauthorized request");
+    }
+
+    const [userVideos, userTweets] = await Promise.all([
+        Video.find({ ownerofvideo: userId }).select("_id"),
+        Tweet.find({ owner: userId }).select("_id"),
+    ]);
+
+    const videoIds = userVideos.map((item) => item._id);
+    const tweetIds = userTweets.map((item) => item._id);
+
+    const commentsToDelete = await Comment.find({
+        $or: [
+            { owner: userId },
+            ...(videoIds.length ? [{ video: { $in: videoIds } }] : []),
+            ...(tweetIds.length ? [{ tweet: { $in: tweetIds } }] : []),
+        ],
+    }).select("_id");
+
+    const commentIds = commentsToDelete.map((item) => item._id);
+
+    await Like.deleteMany({
+        $or: [
+            { likedBy: userId },
+            ...(videoIds.length ? [{ video: { $in: videoIds } }] : []),
+            ...(tweetIds.length ? [{ tweet: { $in: tweetIds } }] : []),
+            ...(commentIds.length ? [{ comment: { $in: commentIds } }] : []),
+        ],
+    });
+
+    await Comment.deleteMany({
+        $or: [
+            { owner: userId },
+            ...(videoIds.length ? [{ video: { $in: videoIds } }] : []),
+            ...(tweetIds.length ? [{ tweet: { $in: tweetIds } }] : []),
+        ],
+    });
+
+    await Promise.all([
+        Video.deleteMany({ ownerofvideo: userId }),
+        Tweet.deleteMany({ owner: userId }),
+    ]);
+
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+        throw new ApiErrors(404, "User not found");
+    }
+
+    return res.status(200).json({
+        success: true,
+        message: "Account deleted successfully",
+    });
+});
 export {
     registerUser,
     loginUser,
@@ -617,4 +794,7 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
+    updateUserProfile,
+    deleteCurrentUser,
+    googleLogin
 }

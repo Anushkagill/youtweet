@@ -1,8 +1,12 @@
-import fetch from "node-fetch";
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 export const generateCaption = async (req, res) => {
   try {
-    console.log("🔥 AI Controller Hit");
+    console.log("🔥 Gemini NEW SDK Hit");
 
     const { text } = req.body;
 
@@ -13,39 +17,40 @@ export const generateCaption = async (req, res) => {
       });
     }
 
-    const response = await fetch("https://api.deepai.org/api/text-generator", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Api-key": "quickstart-QUICKSTART",
-      },
-      body: new URLSearchParams({
-        text: `
-Generate content for a video post.
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `
+You are a viral YouTube content strategist.
 
-Input: ${text}
+Input:
+"${text}"
 
-Give output in this format:
+Your job:
+Turn this into HIGH-ENGAGEMENT content.
+
+Generate:
+1. A scroll-stopping YouTube title (curiosity + emotion)
+2. A short engaging description (2–3 lines max)
+
+Rules:
+- DO NOT repeat the input
+- DO NOT use generic words like "randomness"
+- DO NOT use "watch now"
+- Make it feel clickable and human
+- Use curiosity, relatability, or urgency
+
+Style Examples:
+- "I Tried This for 7 Days… Here’s What Happened"
+- "Nobody Talks About This Coding Habit (But It Works)"
+- "This Changed My Daily Coding Routine Forever"
+
+Format strictly:
 Title:
 Description:
-        `,
-      }),
+`,
     });
 
-    const data = await response.json();
-
-    console.log("🔥 DeepAI Response:", data);
-
-    let output = data?.output?.trim();
-
-    // fallback
-    if (!output) {
-      return res.json({
-        success: true,
-        title: text,
-        description: `${text} - Watch now!`,
-      });
-    }
+    const output = response.text;
 
     let title = "";
     let description = "";
@@ -55,8 +60,8 @@ Description:
       title = parts[0].replace("Title:", "").trim();
       description = parts[1].trim();
     } else {
-      title = output;
-      description = "Watch this video for more details!";
+      title = text;
+      description = "Check this out!";
     }
 
     return res.json({
@@ -66,7 +71,7 @@ Description:
     });
 
   } catch (error) {
-    console.error("❌ ERROR:", error.message);
+    console.error("❌ Gemini ERROR:", error.message);
 
     return res.status(500).json({
       success: false,

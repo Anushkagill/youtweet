@@ -31,14 +31,29 @@ const getAllVideos = asyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid user id");
     }//here we are checking if userId is provided and if it is valid object id or not, if not then we are throwing error
 
-    const matchStage = { isPublished: true };//we only want to fetch published videos, so we are adding this condition in match stage of aggregation pipeline
+    const matchStage = {
+  $or: [
+    { isPublished: true },
+    { ownerofvideo: new mongoose.Types.ObjectId(req.user?._id) }
+  ]
+};//we only want to fetch published videos, so we are adding this condition in match stage of aggregation pipeline
 
-    if (query) {
-        matchStage.$or = [//here we are adding $or condition to match stage of aggregation pipeline, so that we can search for videos by title or description
-            { title: { $regex: query, $options: "i" } },//here we are using $regex operator to search for videos by title, $options: "i" is used to make the search case insensitive, so that if user search for "video" then it will also match with "Video" or "VIDEO"
-            { description: { $regex: query, $options: "i" } }//regex:query means we are searching for the query string in the description field of the video, $options:"i" means we are making the search case insensitive, so that if user search for "video" then it will also match with "Video" or "VIDEO"
-        ];
-    }
+   if (query) {
+    matchStage.$and = [
+        {
+            $or: [
+                { title: { $regex: query, $options: "i" } },
+                { description: { $regex: query, $options: "i" } }
+            ]
+        },
+        {
+            $or: [
+                { isPublished: true },
+                { ownerofvideo: new mongoose.Types.ObjectId(req.user?._id) }
+            ]
+        }
+    ];
+}
 
     if (userId) {
         matchStage.ownerofvideo = new mongoose.Types.ObjectId(userId);
@@ -245,8 +260,20 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiErrors(400, "Invalid video ID");
     }
 
-    //TODO: TO ADD INCREASING VIEWS COUNT LOGIC HERE 
+    // 🔥 STEP 1: Increment views BEFORE aggregation
+    // (only if video exists)
+    const videoDoc = await Video.findById(videoId).select("ownerofvideo");
 
+    if (!videoDoc) {
+        throw new ApiErrors(404, "Video does not exist");
+    }
+
+    console.log("VIEW API CALLED");
+    await Video.findByIdAndUpdate(videoId, {
+        $inc: { views: 1 }
+    });
+
+    // 🔥 STEP 2: Fetch full data using aggregation
     const video = await Video.aggregate([
 
         {
@@ -255,7 +282,10 @@ const getVideoById = asyncHandler(async (req, res) => {
 
                 $or: [
                     { isPublished: true },
-                    { ownerofvideo: new mongoose.Types.ObjectId(req.user._id) }
+                    ...(req.user?._id
+                        ? [{ ownerofvideo: new mongoose.Types.ObjectId(req.user._id) }]
+                        : []
+                    )
                 ]
             }
         },
@@ -263,13 +293,9 @@ const getVideoById = asyncHandler(async (req, res) => {
         {
             $lookup: {
                 from: "users", 
-
                 localField: "ownerofvideo",
-
                 foreignField: "_id",
-
                 as: "owner", 
-
                 pipeline: [
                     {
                         $project: {
@@ -283,7 +309,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         },
 
         {
-
             $unwind: {
                 path: "$owner",
                 preserveNullAndEmptyArrays: true
@@ -291,7 +316,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         },
 
         {
-
             $lookup: {
                 from: "comments",
                 localField: "_id",
@@ -301,7 +325,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         },
 
         {
-
             $lookup: {
                 from: "likes",
                 localField: "_id",
@@ -311,9 +334,7 @@ const getVideoById = asyncHandler(async (req, res) => {
         },
 
         {
-
             $addFields: {
-
 
                 commentsCount: { $size: "$comments" },
 
@@ -336,7 +357,6 @@ const getVideoById = asyncHandler(async (req, res) => {
         },
 
         {
-
             $project: {
                 owner: 1,
                 videoFile: 1,
@@ -503,35 +523,11 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     );
 });
 
-const updateVideoViews = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
-    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)){
-        throw new ApiErrors(400, "Invalid video id")
-    }
-
-    const updatedVideo = await Video.findByIdAndUpdate(
-        videoId,
-        {
-            $inc: {views: 1}
-        },
-        {new: true}
-    )
-
-    if(!updatedVideo){
-        throw new ApiErrors(404, "Video not found")
-    }
-
-    return res
-    .status(200)
-    .json(new ApiResponse(200,updatedVideo,"Video views updated successfully"))
-})
-
 export {
     getAllVideos,
     publishAVideo,
     getVideoById,
     updateVideo,
     deleteVideo,
-    togglePublishStatus,
-    updateVideoViews
+    togglePublishStatus
 }

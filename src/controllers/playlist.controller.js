@@ -51,40 +51,51 @@ const createPlaylist = asyncHandler(async (req, res) => {
 const getUserPlaylists = asyncHandler(async (req, res) => {
     const { userId, limit = 10, cursor } = req.query;
 
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApiErrors(400, "Invalid user id");
+    const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+
+    const matchStage = {};
+
+    // 🔥 CASE 1: USER PROFILE VIEW (if userId provided)
+    if (userId) {
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            throw new ApiErrors(400, "Invalid user id");
+        }
+
+        matchStage.owner = new mongoose.Types.ObjectId(userId);
+
+        // If NOT owner → only public playlists
+        if (!req.user || req.user._id.toString() !== userId) {
+            matchStage.isPublic = true;
+        }
     }
 
-    const matchStage = {
-        owner: new mongoose.Types.ObjectId(userId)
-    };
+    // 🔥 CASE 2: GLOBAL FEED (no userId)
+    else {
+        matchStage.$or = [
+            { isPublic: true },
+            ...(req.user?._id
+                ? [{ owner: new mongoose.Types.ObjectId(req.user._id) }]
+                : []
+            )
+        ];
+    }
 
-    if (!req.user || req.user._id.toString() !== userId) {
-        matchStage.isPublic = true;
-    }//  If user is not the owner, only fetch public playlists
-
-
+    // 🔥 Pagination
     if (cursor) {
         matchStage.createdAt = {
             $lt: new Date(cursor)
-        };//lt means less than, so we are fetching playlists which are created before the cursor date, this is for pagination, when client will send nextCursor in the request then we will fetch playlists which are created before that nextCursor date, this way we can fetch next set of playlists for pagination
+        };
     }
 
-    //  Limit control (1–50)
-    const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
-
-    // 7. Fetch playlists
     const playlists = await Playlist.find(matchStage)
         .sort({ createdAt: -1 })
         .limit(limitNumber)
-        .select("name description isPublic totalVideos createdAt");
-
+        .select("name description isPublic totalVideos createdAt owner");
 
     const nextCursor =
         playlists.length === limitNumber
             ? playlists[playlists.length - 1].createdAt
             : null;
-
 
     return res.status(200).json(
         new ApiResponse(
@@ -97,7 +108,6 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
         )
     );
 });
-
 const getPlaylistById = asyncHandler(async (req, res) => {
     const { playlistId } = req.params;
 
@@ -468,10 +478,10 @@ const updatePlaylist = asyncHandler(async (req, res) => {
 });
 
 const togglePlaylistPublicStatus = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params
+    const { playlistId } = req.params;
 
-    if(!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)){
-        throw new ApiErrors(400, "Invalid playlist id")
+    if (!playlistId || !mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new ApiErrors(400, "Invalid playlist id");
     }
 
     const userId = req.user?._id;
@@ -480,30 +490,29 @@ const togglePlaylistPublicStatus = asyncHandler(async (req, res) => {
         throw new ApiErrors(401, "Unauthorized request");
     }
 
-    const updatedPlaylist = await Playlist.findOneAndUpdate(
-        {
-            _id: playlistId,
-            owner: userId
-        },
-        [
-            {
-                $set: {
-                    isPublic: {$not: "$isPublic"}
-                }
-            },
-        ],
-        {new: true}
-    )
+    // 🔥 Find playlist owned by user
+    const playlist = await Playlist.findOne({
+        _id: playlistId,
+        owner: userId
+    });
 
-    if(!updatedPlaylist){
-        throw new ApiErrors(404, "No playlist found or Forbidden request")
+    if (!playlist) {
+        throw new ApiErrors(404, "No playlist found or Forbidden request");
     }
 
-    return res
-    .status(200)
-    .json(new ApiResponse(200, updatedPlaylist, "Public status toggled successfully"))
-})
+    // 🔥 Toggle safely
+    playlist.isPublic = !playlist.isPublic;
 
+    await playlist.save();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            { isPublic: playlist.isPublic },
+            "Public status toggled successfully"
+        )
+    );
+});
 export {
     createPlaylist,
     getUserPlaylists,

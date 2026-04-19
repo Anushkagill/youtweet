@@ -28,17 +28,15 @@ const likeSchema=new Schema(
 /* so here we are defining the pre-save middleware for the likeSchema because we want to check before 
 saving that this function is called which ensures only one of the three fields is present because of
 one like only one count will increase in any of the one video,comment,tweet */
-likeSchema.pre("save", function (next) {
+likeSchema.pre("save", async function () {
     const count =
         (this.video ? 1 : 0) +
         (this.comment ? 1 : 0) +
         (this.tweet ? 1 : 0);
 
     if (count !== 1) {
-        return next(new Error("Only one of video, comment, or tweet must be present"));
+        throw new Error("Only one of video, comment, or tweet must be present");
     }
-
-    next();
 });
 
 /*Agar aisa document bana jisme likedBy aur video field exactly same hai to an already created document, toh ye document create nhi hoga

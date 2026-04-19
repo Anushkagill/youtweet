@@ -24,14 +24,18 @@ const removeLocalFile = async (filePath) => {
 };
 
 // ==========================
-// Upload File
+// Upload File (🔥 FIXED)
 // ==========================
 const uploadOnCloudinary = async (localFilePath) => {
   if (!localFilePath) return null;
 
   try {
+    // 🔥 detect type manually
+    const isVideo = localFilePath.match(/\.(mp4|mov|avi|mkv)$/i);
+
     const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "auto", // auto-detect image/video/raw
+      resource_type: isVideo ? "video" : "image", // ✅ FIX
+      chunk_size: isVideo ? 6000000 : undefined, // ✅ for large videos
     });
 
     await removeLocalFile(localFilePath);
@@ -54,7 +58,7 @@ const getPublicIdFromUrl = (url) => {
     const parts = url.split("/upload/");
     if (parts.length !== 2) return null;
 
-    const pathWithVersion = parts[1]; 
+    const pathWithVersion = parts[1];
     const pathWithoutVersion = pathWithVersion.replace(/^v\d+\//, "");
     const publicId = pathWithoutVersion.replace(/\.[^/.]+$/, "");
 
@@ -82,7 +86,7 @@ const deleteFromCloudinary = async (fileUrl) => {
 
     const result = await cloudinary.uploader.destroy(publicId, {
       resource_type: resourceType,
-      invalidate: true, // clear CDN cache
+      invalidate: true,
     });
 
     return result;
@@ -93,5 +97,3 @@ const deleteFromCloudinary = async (fileUrl) => {
 };
 
 export { uploadOnCloudinary, deleteFromCloudinary };
-
-    

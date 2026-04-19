@@ -8,9 +8,13 @@ import { registerUser,
       updateAccountDetails,
        updateUserAvatar, 
        updateUserCoverImage,
-      getUserChannelProfile,} from "../controllers/user.controller.js";
+      getUserChannelProfile,
+      updateUserProfile,
+      deleteCurrentUser
+    } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { googleLogin } from "../controllers/user.controller.js";
 
 const router=Router()
 
@@ -37,9 +41,15 @@ router.route("/logout").post(verifyJWT,logoutUser)
 
 router.route("/refresh-token").post(refreshAccessToken)
 
-router.route("/change-password").post(verifyJWT,changeCurrentPassword)
+router.route("/change-password").patch(verifyJWT,changeCurrentPassword).post(verifyJWT,changeCurrentPassword)
 
 router.route("/current-user").get(verifyJWT,getCurrentUser)
+
+router.delete(
+  "/delete-account",
+  verifyJWT,
+  deleteCurrentUser
+)
 
 router.route("/update-account").patch(verifyJWT,updateAccountDetails)
 //patch isliye kyuki user apne account details me se kisi bhi field ko update kar sakta hai to hum patch method use karenge taki user apne account details me se kisi bhi field ko update kar sake without affecting other fields. Agar hum put method use karte to user ko apne account details ke sare fields ko provide karna padta jo ki zaruri nahi hai ki wo kare. Patch method me user apne account details ke kisi bhi field ko update kar sakta hai bina baki fields ko provide kiye huye.
@@ -50,6 +60,18 @@ router.route("/update-coverimage").patch(verifyJWT,upload.single("coverImage"),u
 
 router.route("/c/:username").get(verifyJWT,getUserChannelProfile)
 
+
+router.patch(
+  "/update-profile",
+  verifyJWT,
+  upload.fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "coverImage", maxCount: 1 }
+  ]),
+  updateUserProfile
+);
+
+router.route("/google-login").post(googleLogin);
 
 
 

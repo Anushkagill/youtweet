@@ -8,31 +8,38 @@ import {Tweet} from "../models/tweet.model.js"
 import {Video} from "../models/video.model.js"
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
-    const {videoId} = req.params
+    const { videoId } = req.params;
+
     if (!req.user?._id) {
-    throw new ApiErrors(401, "Unauthorized");
-}
-    const userId = req.user?._id;
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userId = req.user._id;
+
     if (!videoId || !isValidObjectId(videoId)) {
-        throw new ApiErrors(400, "Invalid video ID");
+        return res.status(400).json({ message: "Invalid video ID" });
     }
-    const videoExists = await Video.exists({_id: videoId})
-    if(!videoExists){
-        throw new ApiErrors(404, "No video found")
-    }
-    const removedLike = await Like.findOneAndDelete({
-        video: videoId,
-        likedBy: userId
-    });
-     if (removedLike) {
-        return res.status(200).json(
-            new ApiResponse(200, { liked: false }, "Video unliked successfully")
-        );
-    }
-    /*await Like.create(...) can throw a duplicate key error if two requests hit at the same time, user double-clicks quickly so to 
-    handle this we wrap it in try catch*/
-    //It is known as race-condition and its error code is 11000
+
     try {
+        // 🔥 safer check instead of exists()
+        const video = await Video.findById(videoId);
+        if (!video) {
+            return res.status(404).json({ message: "Video not found" });
+        }
+
+        // 🔥 try removing existing like
+        const removedLike = await Like.findOneAndDelete({
+            video: videoId,
+            likedBy: userId
+        });
+
+        if (removedLike) {
+            return res.status(200).json(
+                new ApiResponse(200, { liked: false }, "Video unliked successfully")
+            );
+        }
+
+        // 🔥 create like
         await Like.create({
             video: videoId,
             likedBy: userId
@@ -41,17 +48,22 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         return res.status(200).json(
             new ApiResponse(200, { liked: true }, "Video liked successfully")
         );
+
     } catch (error) {
-        if (error.code === 11000) {
+        console.error("LIKE ERROR FULL:", error);
+
+        // 🔥 handle duplicate safely
+        if (error.code === 11000 || error.message?.includes("duplicate")) {
             return res.status(200).json(
                 new ApiResponse(200, { liked: true }, "Already liked")
             );
         }
 
-        throw new ApiErrors(500, "Error toggling video like");
+        return res.status(500).json({
+            message: error.message || "Error toggling video like",
+        });
     }
 });
-
 const toggleCommentLike = asyncHandler(async (req, res) => {
     const {commentId} = req.params
     if (!req.user?._id) {
