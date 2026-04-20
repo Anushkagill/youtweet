@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@500;600;700&display=swap');
+@import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-base: #f7fbfd;
+  --font-sans: 'Outfit', 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: #f7fbfd;
+  color: #111827;
+  cursor: default;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+:where(button, a, [role='button'], [onclick], [data-clickable='true'], [data-clickable='']) {
+  cursor: pointer;
+  transition-property: background-color, border-color, color, opacity, box-shadow, transform;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+:where(button:not(:disabled), [role='button']:not([aria-disabled='true']), [onclick]:not([aria-disabled='true']), [data-clickable='true']:not([aria-disabled='true']), [data-clickable='']:not([aria-disabled='true'])):hover {
+  opacity: 0.96;
+  transform: scale(0.995);
+}
+
+a:hover {
+  color: var(--link-hover-color, #60a5fa);
+}
+
+:where(input, textarea) {
+  cursor: text;
+  color: #0f172a;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+
+input:focus,
+textarea:focus {
+  color: #0f172a;
+}
+
+:where(
+    button:disabled,
+    a[aria-disabled='true'],
+    input:disabled,
+    textarea:disabled,
+    select:disabled,
+    [role='button'][aria-disabled='true'],
+    [onclick][aria-disabled='true'],
+    [data-clickable='true'][aria-disabled='true'],
+    [data-clickable=''][aria-disabled='true']
+  ) {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background: #020617;
+  color: #e2e8f0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
