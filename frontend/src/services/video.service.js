@@ -1,11 +1,7 @@
 import { httpClient } from './http'
 
-/**
- * 🔥 FETCH ALL VIDEOS (FEED)
- * GET /api/v1/videos
- */
 export async function fetchVideos(params = {}) {
-  const res = await httpClient.get('/videos', { params })
+  const res = await httpClient.get('/api/v1/videos', { params })
 
   return {
     videos: res.data?.data?.docs ?? [],
@@ -20,12 +16,8 @@ export async function fetchVideos(params = {}) {
   }
 }
 
-/**
- * 🔥 FETCH SINGLE VIDEO
- * GET /api/v1/videos/:videoId
- */
 export async function fetchVideoById(videoId) {
-  const res = await httpClient.get(`/videos/${videoId}`)
+  const res = await httpClient.get(`/api/v1/videos/${videoId}`)
 
   return {
     video: res.data?.data ?? null,
@@ -33,12 +25,8 @@ export async function fetchVideoById(videoId) {
   }
 }
 
-/**
- * 🔥 TOGGLE LIKE (FINAL FIXED)
- * POST /api/v1/likes/video/:videoId
- */
 export async function toggleVideoLike(videoId) {
-  const res = await httpClient.post(`/likes/video/${videoId}`)
+  const res = await httpClient.post(`/api/v1/likes/video/${videoId}`)
 
   return {
     liked: res.data?.data?.liked,
@@ -46,10 +34,6 @@ export async function toggleVideoLike(videoId) {
   }
 }
 
-/**
- * 🔥 UPLOAD VIDEO
- * POST /api/v1/videos
- */
 export async function uploadVideo(payload) {
   const formData = new FormData()
 
@@ -62,7 +46,7 @@ export async function uploadVideo(payload) {
     formData.append('publishStatus', String(payload.publishStatus))
   }
 
-  const res = await httpClient.post('/videos', formData)
+  const res = await httpClient.post('/api/v1/videos', formData)
 
   return {
     video: res.data?.data ?? null,
@@ -70,12 +54,8 @@ export async function uploadVideo(payload) {
   }
 }
 
-/**
- * 🔥 FETCH WATCH HISTORY
- * GET /api/v1/watch-history
- */
 export async function fetchWatchHistory(params = {}) {
-  const res = await httpClient.get('/watch-history', { params })
+  const res = await httpClient.get('/api/v1/watch-history', { params })
 
   return {
     history: res.data?.data?.docs ?? [],
@@ -83,12 +63,8 @@ export async function fetchWatchHistory(params = {}) {
   }
 }
 
-/**
- * ADD VIDEO TO WATCH HISTORY
- * POST /api/v1/watch-history/:videoId
- */
 export async function addToWatchHistory(videoId) {
-  const res = await httpClient.post(`/watch-history/${videoId}`)
+  const res = await httpClient.post(`/api/v1/watch-history/${videoId}`)
 
   return {
     data: res.data?.data ?? null,
@@ -96,24 +72,16 @@ export async function addToWatchHistory(videoId) {
   }
 }
 
-/**
- * DELETE VIDEO
- * DELETE /api/v1/videos/:videoId
- */
 export async function deleteVideo(videoId) {
-  const res = await httpClient.delete(`/videos/${videoId}`)
+  const res = await httpClient.delete(`/api/v1/videos/${videoId}`)
 
   return {
     message: res.data?.message,
   }
 }
 
-/**
- * TOGGLE VIDEO PUBLISH STATUS
- * PATCH /api/v1/videos/toggle/publish/:videoId
- */
 export async function toggleVideoPublish(videoId) {
-  const res = await httpClient.patch(`/videos/toggle/publish/${videoId}`)
+  const res = await httpClient.patch(`/api/v1/videos/toggle/publish/${videoId}`)
 
   return {
     video: res.data?.data ?? null,

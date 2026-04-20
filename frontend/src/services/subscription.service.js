@@ -1,9 +1,7 @@
 import { httpClient } from './http'
 
 export async function fetchMySubscribedChannels(params = {}) {
-  const response = await httpClient.get('/subscriptions/channels', {
-    params,
-  })
+  const response = await httpClient.get('/api/v1/subscriptions/channels', { params })
 
   return {
     channels: response.data?.data?.channels ?? [],
@@ -12,9 +10,7 @@ export async function fetchMySubscribedChannels(params = {}) {
 }
 
 export async function fetchSubscriptionsVideos(params = {}) {
-  const response = await httpClient.get('/subscriptions/videos', {
-    params,
-  })
+  const response = await httpClient.get('/api/v1/subscriptions/videos', { params })
 
   return {
     videos: response.data?.data?.videos ?? [],
@@ -23,9 +19,7 @@ export async function fetchSubscriptionsVideos(params = {}) {
 }
 
 export async function fetchSubscribedChannels(subscriberId, params = {}) {
-  const response = await httpClient.get(`/subscriptions/get-subscribed-channels/${subscriberId}`, {
-    params,
-  })
+  const response = await httpClient.get(`/api/v1/subscriptions/get-subscribed-channels/${subscriberId}`, { params })
 
   return {
     channels: response.data?.data?.docs ?? [],
@@ -34,11 +28,8 @@ export async function fetchSubscribedChannels(subscriberId, params = {}) {
 }
 
 export async function fetchChannelSubscribersCount(channelId) {
-  const response = await httpClient.get(`/subscriptions/get-subscribers/${channelId}`, {
-    params: {
-      page: 1,
-      limit: 1,
-    },
+  const response = await httpClient.get(`/api/v1/subscriptions/get-subscribers/${channelId}`, {
+    params: { page: 1, limit: 1 },
   })
 
   return {

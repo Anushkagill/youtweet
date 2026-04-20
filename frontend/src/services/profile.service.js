@@ -1,7 +1,7 @@
 import { httpClient } from './http'
 
 export async function fetchProfileByUsername(username) {
-  const response = await httpClient.get(`/users/c/${username}`)
+  const response = await httpClient.get(`/api/v1/users/c/${username}`)
 
   return {
     user: response.data?.data ?? null,
@@ -10,11 +10,8 @@ export async function fetchProfileByUsername(username) {
 }
 
 export async function fetchProfileVideos(userId, params = {}) {
-  const response = await httpClient.get('/videos', {
-    params: {
-      userId,
-      ...params,
-    },
+  const response = await httpClient.get('/api/v1/videos', {
+    params: { userId, ...params },
   })
 
   return {
@@ -24,11 +21,8 @@ export async function fetchProfileVideos(userId, params = {}) {
 }
 
 export async function fetchProfileTweets(userId, params = {}) {
-  const response = await httpClient.get('/tweets/allTweets', {
-    params: {
-      userId,
-      ...params,
-    },
+  const response = await httpClient.get('/api/v1/tweets/allTweets', {
+    params: { userId, ...params },
   })
 
   return {
@@ -38,9 +32,7 @@ export async function fetchProfileTweets(userId, params = {}) {
 }
 
 export async function fetchProfilePlaylists(params = {}) {
-  const response = await httpClient.get('/playlists/get-user-playlists', {
-    params,
-  })
+  const response = await httpClient.get('/api/v1/playlists/get-user-playlists', { params })
 
   return {
     playlists: response.data?.data?.playlists ?? [],
@@ -49,7 +41,7 @@ export async function fetchProfilePlaylists(params = {}) {
 }
 
 export async function fetchPlaylistById(playlistId) {
-  const response = await httpClient.get(`/playlists/${playlistId}`)
+  const response = await httpClient.get(`/api/v1/playlists/${playlistId}`)
 
   return {
     playlist: response.data?.data ?? null,
@@ -58,7 +50,7 @@ export async function fetchPlaylistById(playlistId) {
 }
 
 export async function createUserPlaylist(payload) {
-  const response = await httpClient.post('/playlists/create-playlist', payload)
+  const response = await httpClient.post('/api/v1/playlists/create-playlist', payload)
 
   return {
     playlist: response.data?.data ?? null,
@@ -67,7 +59,7 @@ export async function createUserPlaylist(payload) {
 }
 
 export async function addVideoToPlaylist(playlistId, videoId) {
-  const response = await httpClient.post(`/playlists/add-video/${playlistId}/${videoId}`)
+  const response = await httpClient.post(`/api/v1/playlists/add-video/${playlistId}/${videoId}`)
 
   return {
     playlist: response.data?.data ?? null,
@@ -76,7 +68,7 @@ export async function addVideoToPlaylist(playlistId, videoId) {
 }
 
 export async function removeVideoFromPlaylist(playlistId, videoId) {
-  const response = await httpClient.patch(`/playlists/remove-video/${playlistId}/${videoId}`)
+  const response = await httpClient.patch(`/api/v1/playlists/remove-video/${playlistId}/${videoId}`)
 
   return {
     playlist: response.data?.data ?? null,
@@ -85,7 +77,7 @@ export async function removeVideoFromPlaylist(playlistId, videoId) {
 }
 
 export async function deletePlaylist(playlistId) {
-  const response = await httpClient.delete(`/playlists/${playlistId}`)
+  const response = await httpClient.delete(`/api/v1/playlists/${playlistId}`)
 
   return {
     message: response.data?.message,
@@ -93,7 +85,7 @@ export async function deletePlaylist(playlistId) {
 }
 
 export async function togglePlaylistPublicStatus(playlistId) {
-  const response = await httpClient.patch(`/playlists/toggle-public-status/${playlistId}`)
+  const response = await httpClient.patch(`/api/v1/playlists/toggle-public-status/${playlistId}`)
 
   return {
     playlist: response.data?.data ?? null,
@@ -102,7 +94,7 @@ export async function togglePlaylistPublicStatus(playlistId) {
 }
 
 export async function toggleProfileSubscription(channelId) {
-  const response = await httpClient.post(`/subscriptions/toggle/${channelId}`)
+  const response = await httpClient.post(`/api/v1/subscriptions/toggle/${channelId}`)
 
   const data = response.data?.data ?? {}
   const isSubscribed =
@@ -111,6 +103,7 @@ export async function toggleProfileSubscription(channelId) {
       : typeof data.subscribed === 'boolean'
         ? data.subscribed
         : false
+
   const subscribersCount =
     typeof data.subscribersCount === 'number' ? data.subscribersCount : 0
 
@@ -123,15 +116,12 @@ export async function toggleProfileSubscription(channelId) {
 }
 
 export async function fetchChannelSubscribersCount(channelId) {
-  const response = await httpClient.get(`/subscriptions/get-subscribers/${channelId}`, {
+  const response = await httpClient.get(`/api/v1/subscriptions/get-subscribers/${channelId}`, {
     params: { page: 1, limit: 1 },
   })
 
-  const data = response.data?.data
-  const totalDocs = data?.totalDocs
-
   return {
-    subscribersCount: typeof totalDocs === 'number' ? totalDocs : 0,
+    subscribersCount: response.data?.data?.totalDocs ?? 0,
     message: response.data?.message,
   }
 }
@@ -148,16 +138,16 @@ export async function updateProfile(data) {
     }
   }
 
-  const response = await httpClient.patch('/users/update-profile', payload)
+  const response = await httpClient.patch('/api/v1/users/update-profile', payload)
   return response
 }
 
 export async function changePassword(payload) {
-  const response = await httpClient.patch('/users/change-password', payload)
+  const response = await httpClient.patch('/api/v1/users/change-password', payload)
   return response
 }
 
 export async function deleteAccount() {
-  const res = await httpClient.delete('/users/delete-account')
+  const res = await httpClient.delete('/api/v1/users/delete-account')
   return res.data
 }
