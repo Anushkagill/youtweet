@@ -6,10 +6,12 @@ import { errorHandler } from './middlewares/error.middleware.js'
 const app=express()
 
 app.use(cors({
-    origin:"https://youtweet-six.vercel.app",
-     //allow requests from this origin, you can specify a specific domain or use "*" to allow all origins. but if credentials:true is set, you cannot use "*" for the origin. You must specify the exact origin(s) that are allowed to access the resources.
-    credentials:true // allow cookies to be sent in cross-origin requests,credentials:true is necessary when the client and server are on different domains and you want to allow cookies to be included in the requests.
-}))
+  origin: [
+    "https://youtweet-six.vercel.app",
+    "https://youtweet-git-main-anushka-gills-projects.vercel.app"
+  ],
+  credentials: true
+}));
 
 //what are cookies they are small pieces of data stored on the client side (in the user's browser) that can be sent back to the server with each request. They are commonly used for session management, user authentication, and storing user preferences. By setting credentials:true in the CORS configuration, you allow cookies to be included in cross-origin requests, enabling features like maintaining user sessions across different domains.,they are like small notes that the server can give to the client's browser, and the browser will keep them and send them back to the server when needed. This helps the server remember things about the user, like if they are logged in or what their preferences are.
 
