@@ -1,7 +1,7 @@
 import { httpClient } from './http'
 
 export async function fetchVideoComments(videoId, params = {}) {
-  const res = await httpClient.get(`/comments/video/${videoId}`, { params })
+  const res = await httpClient.get(`/api/v1/comments/video/${videoId}`, { params })
   return {
     comments: res.data?.data?.docs ?? [],
     pagination: {
@@ -16,7 +16,7 @@ export async function fetchVideoComments(videoId, params = {}) {
 }
 
 export async function createVideoComment(videoId, content) {
-  const res = await httpClient.post(`/comments/video/${videoId}`, { content })
+  const res = await httpClient.post(`/api/v1/comments/video/${videoId}`, { content })
   return {
     comment: res.data?.data ?? null,
     message: res.data?.message,
@@ -24,19 +24,19 @@ export async function createVideoComment(videoId, content) {
 }
 
 export async function fetchTweetReplies(tweetId, params = {}) {
-  const res = await httpClient.get(`/comments/tweet/${tweetId}`, { params })
+  const res = await httpClient.get(`/api/v1/comments/tweet/${tweetId}`, { params })
 
   return Array.isArray(res.data?.data) ? res.data.data : []
 }
 
 export async function createTweetReply(tweetId, content) {
-  const res = await httpClient.post(`/comments/tweet/${tweetId}`, { content })
+  const res = await httpClient.post(`/api/v1/comments/tweet/${tweetId}`, { content })
 
   return res.data?.data ?? null
 }
 
 export async function toggleCommentLike(commentId) {
-  const res = await httpClient.post(`/likes/comment/${commentId}`)
+  const res = await httpClient.post(`/api/v1/likes/comment/${commentId}`)
 
   return {
     liked: res.data?.data?.liked,
@@ -45,7 +45,7 @@ export async function toggleCommentLike(commentId) {
 }
 
 export async function deleteComment(commentId) {
-  const res = await httpClient.delete(`/comments/${commentId}`)
+  const res = await httpClient.delete(`/api/v1/comments/${commentId}`)
 
   return {
     message: res.data?.message,

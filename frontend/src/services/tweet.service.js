@@ -1,7 +1,7 @@
 import { httpClient } from './http'
 
 export async function fetchAllTweets(params = {}) {
-  const response = await httpClient.get('/tweets/allTweets', {
+  const response = await httpClient.get('/api/v1/tweets/allTweets', {
     params,
   })
 
@@ -12,7 +12,7 @@ export async function fetchAllTweets(params = {}) {
 }
 
 export async function createTweet(payload) {
-  const response = await httpClient.post('/tweets', payload)
+  const response = await httpClient.post('/api/v1/tweets', payload)
 
   return {
     tweet: response.data?.data ?? null,
@@ -21,7 +21,7 @@ export async function createTweet(payload) {
 }
 
 export async function toggleTweetLike(tweetId) {
-  const response = await httpClient.post(`/likes/tweet/${tweetId}`)
+  const response = await httpClient.post(`/api/v1/likes/tweet/${tweetId}`)
 
   return {
     liked: response.data?.data?.liked,
@@ -30,7 +30,7 @@ export async function toggleTweetLike(tweetId) {
 }
 
 export async function deleteTweet(tweetId) {
-  const response = await httpClient.delete(`/tweets/${tweetId}`)
+  const response = await httpClient.delete(`/api/v1/tweets/${tweetId}`)
 
   return {
     message: response.data?.message,
