@@ -52,9 +52,10 @@ const googleLogin = asyncHandler(async (req, res) => {
     delete loggedInUser.refreshToken;
 
     const options = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production"
-    };
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+};
 
     return res
         .status(200)
