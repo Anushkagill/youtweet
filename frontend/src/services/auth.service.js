@@ -6,17 +6,17 @@ export async function login({ identifier, password }) {
     ? { email: identifier, password }
     : { username: identifier, password }
 
-  const response = await httpClient.post('/users/login', payload)
+  const response = await httpClient.post('/api/v1/users/login', payload)
   return response.data
 }
 
 export async function fetchCurrentUser() {
-  const response = await httpClient.get('/users/current-user')
+  const response = await httpClient.get('/api/v1/users/current-user')
   return response.data
 }
 
 export async function logout() {
-  const response = await httpClient.post('/users/logout')
+  const response = await httpClient.post('/api/v1/users/logout')
   return response.data
 }
 
@@ -33,6 +33,6 @@ export async function registerUser(payload) {
     formData.append('coverImage', payload.coverImage)
   }
 
-  const response = await httpClient.post('/users/register', formData)
+  const response = await httpClient.post('/api/v1/users/register', formData)
   return response.data
 }
