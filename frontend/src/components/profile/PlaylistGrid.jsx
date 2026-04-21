@@ -38,6 +38,7 @@ function SkeletonGrid() {
 export function PlaylistGrid({ userId }) {
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
+
   const isOwner = Boolean(
     currentUser?._id && userId && String(currentUser._id) === String(userId),
   )
@@ -46,7 +47,6 @@ export function PlaylistGrid({ userId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deletingById, setDeletingById] = useState({})
-
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const loadPlaylists = useCallback(async () => {
@@ -67,7 +67,8 @@ export function PlaylistGrid({ userId }) {
 
           try {
             const details = await fetchPlaylistById(item._id)
-            const firstVideoThumb = details.playlist?.videos?.[0]?.thumbnail || ''
+            const firstVideoThumb =
+              details.playlist?.videos?.[0]?.thumbnail || ''
             return { ...item, thumbnail: firstVideoThumb }
           } catch {
             return { ...item, thumbnail: '' }
@@ -77,8 +78,7 @@ export function PlaylistGrid({ userId }) {
 
       setPlaylists(withThumbnail)
     } catch (err) {
-      const message = getApiErrorMessage(err, 'Could not fetch playlists.')
-      setError(message)
+      setError(getApiErrorMessage(err, 'Could not fetch playlists.'))
     } finally {
       setLoading(false)
     }
@@ -88,15 +88,14 @@ export function PlaylistGrid({ userId }) {
     loadPlaylists()
   }, [loadPlaylists])
 
+  // ✅ FIXED DELETE
   async function handleDeletePlaylist(playlistId) {
-    if (!playlistId || deletingById[playlistId]) {
-      return
-    }
+    if (!playlistId || deletingById[playlistId]) return
 
     setDeletingById((prev) => ({ ...prev, [playlistId]: true }))
 
     try {
-      await httpClient.delete(`/playlists/${playlistId}`)
+      await httpClient.delete(`/api/v1/playlists/${playlistId}`) // ✅ FIX
       setPlaylists((prev) => prev.filter((item) => item._id !== playlistId))
       toast.success('Playlist deleted')
     } catch (err) {
@@ -107,35 +106,30 @@ export function PlaylistGrid({ userId }) {
     }
   }
 
+  // ✅ FIXED TOGGLE
   async function handleTogglePlaylistPrivacy(playlistId) {
-    if (!playlistId) {
-      return
-    }
+    if (!playlistId) return
 
     const prevPlaylists = playlists
 
     setPlaylists((prev) =>
       prev.map((item) =>
         item._id === playlistId
-          ? {
-              ...item,
-              isPublic: !item.isPublic,
-            }
+          ? { ...item, isPublic: !item.isPublic }
           : item,
       ),
     )
 
     try {
-      const res = await httpClient.patch(`/playlists/toggle-public-status/${playlistId}`)
+      const res = await httpClient.patch(
+        `/api/v1/playlists/toggle-public-status/${playlistId}` // ✅ FIX
+      )
 
       if (res.data?.data?.isPublic !== undefined) {
         setPlaylists((prev) =>
           prev.map((item) =>
             item._id === playlistId
-              ? {
-                  ...item,
-                  isPublic: res.data.data.isPublic,
-                }
+              ? { ...item, isPublic: res.data.data.isPublic }
               : item,
           ),
         )
@@ -148,24 +142,24 @@ export function PlaylistGrid({ userId }) {
 
   return (
     <section className="space-y-4">
-      {isOwner ? (
+      {isOwner && (
         <div className="flex items-center justify-end">
-          <Button type="button" onClick={() => setIsModalOpen(true)}>
+          <Button onClick={() => setIsModalOpen(true)}>
             Create Playlist
           </Button>
         </div>
-      ) : null}
+      )}
 
-      {error ? (
+      {error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
-      ) : null}
+      )}
 
-      {loading ? <SkeletonGrid /> : null}
-      {!loading && playlists.length === 0 ? <EmptyState /> : null}
+      {loading && <SkeletonGrid />}
+      {!loading && playlists.length === 0 && <EmptyState />}
 
-      {!loading && playlists.length > 0 ? (
+      {!loading && playlists.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {playlists.map((playlist) => {
             const isOwner =
@@ -175,12 +169,11 @@ export function PlaylistGrid({ userId }) {
             return (
               <article
                 key={playlist._id}
-                className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                className="relative overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md"
               >
                 {isOwner && (
-                  <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+                  <div className="absolute top-2 right-2 flex gap-2 z-10">
                     <button
-                      type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         handleTogglePlaylistPrivacy(playlist._id)
@@ -193,56 +186,52 @@ export function PlaylistGrid({ userId }) {
                     </button>
 
                     <button
-                      type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         handleDeletePlaylist(playlist._id)
                       }}
-                      disabled={Boolean(deletingById[playlist._id])}
-                      className="rounded bg-red-500 px-2 py-1 text-xs text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="bg-red-500 text-white px-2 py-1 text-xs rounded"
                     >
-                      {deletingById[playlist._id] ? 'Deleting...' : 'Delete'}
+                      Delete
                     </button>
                   </div>
                 )}
 
                 <button
-                  type="button"
                   onClick={() => navigate(`/playlists/${playlist._id}`)}
                   className="w-full text-left"
                 >
                   {playlist.thumbnail ? (
                     <img
                       src={playlist.thumbnail}
-                      alt={playlist.name || 'Playlist'}
                       className="aspect-video w-full object-cover"
                     />
                   ) : (
-                    <div className="aspect-video grid place-items-center bg-linear-to-br from-slate-100 to-slate-200 text-xs font-medium text-slate-500">
+                    <div className="aspect-video bg-gray-200 flex items-center justify-center text-xs">
                       No Thumbnail
                     </div>
                   )}
 
-                  <div className="space-y-2 p-3">
-                    <p className="line-clamp-2 text-sm font-semibold text-slate-900">
-                      {playlist.name || 'Untitled playlist'}
+                  <div className="p-3">
+                    <p className="font-semibold">{playlist.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {playlist.totalVideos} videos
                     </p>
-                    <p className="text-xs text-slate-600">{playlist.totalVideos ?? 0} videos</p>
                   </div>
                 </button>
               </article>
             )
           })}
         </div>
-      ) : null}
+      )}
 
-      {isOwner ? (
+      {isOwner && (
         <CreatePlaylistModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSuccess={loadPlaylists}
         />
-      ) : null}
+      )}
     </section>
   )
 }
