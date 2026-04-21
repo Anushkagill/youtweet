@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useParams } from 'react-router-dom'
 import { fetchPlaylistById, removeVideoFromPlaylist } from '../services/profile.service'
 import { getApiErrorMessage } from '../utils/apiError'
 
@@ -38,6 +38,8 @@ function EmptyState() {
 
 export function PlaylistDetailPage() {
   const { playlistId } = useParams()
+  const navigate = useNavigate()
+
   const [playlist, setPlaylist] = useState(null)
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +58,7 @@ export function PlaylistDetailPage() {
       try {
         const response = await fetchPlaylistById(playlistId)
         if (!active) return
+
         setPlaylist(response.playlist || null)
         setVideos(response.playlist?.videos || [])
       } catch (err) {
@@ -75,14 +78,13 @@ export function PlaylistDetailPage() {
   }, [playlistId])
 
   async function handleRemoveVideo(videoId) {
-    if (!videoId || !playlistId || removingById[videoId]) {
-      return
-    }
+    if (!videoId || !playlistId || removingById[videoId]) return
 
     const previousVideos = videos
 
     setRemovingById((prev) => ({ ...prev, [videoId]: true }))
     setVideos((prev) => prev.filter((video) => video._id !== videoId))
+
     setPlaylist((prev) => {
       if (!prev) return prev
       return {
@@ -96,6 +98,7 @@ export function PlaylistDetailPage() {
       toast.success(response.message || 'Video removed from playlist')
     } catch (err) {
       console.error('Failed to remove video from playlist:', err)
+
       setVideos(previousVideos)
       setPlaylist((prev) => {
         if (!prev) return prev
@@ -104,15 +107,14 @@ export function PlaylistDetailPage() {
           totalVideos: previousVideos.length,
         }
       })
+
       toast.error(getApiErrorMessage(err, 'Could not remove video.'))
     } finally {
       setRemovingById((prev) => ({ ...prev, [videoId]: false }))
     }
   }
 
-  if (loading) {
-    return <PlaylistDetailSkeleton />
-  }
+  if (loading) return <PlaylistDetailSkeleton />
 
   if (error) {
     return (
@@ -124,31 +126,49 @@ export function PlaylistDetailPage() {
 
   return (
     <section className="space-y-4">
+      {/* HEADER */}
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">{playlist?.name || 'Playlist'}</h1>
-        <p className="mt-1 text-sm text-slate-600">{playlist?.description || 'No description.'}</p>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {playlist?.name || 'Playlist'}
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">
+          {playlist?.description || 'No description.'}
+        </p>
         <p className="mt-3 text-xs font-medium uppercase tracking-wide text-slate-500">
           Total videos: {playlist?.totalVideos ?? videos.length}
         </p>
       </header>
 
-      {videos.length === 0 ? <EmptyState /> : null}
+      {/* EMPTY */}
+      {videos.length === 0 && <EmptyState />}
 
-      {videos.length > 0 ? (
+      {/* VIDEOS */}
+      {videos.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {videos.map((video) => (
-            <article key={video._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <article
+              key={video._id}
+              onClick={() => navigate(`/video/${video._id}`)}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm cursor-pointer transition hover:shadow-md"
+            >
               <img
                 src={video.thumbnail}
                 alt={video.title || 'Video thumbnail'}
                 className="aspect-video w-full object-cover"
               />
-              <div className="p-3">
-                <p className="line-clamp-2 text-sm font-semibold text-slate-900">{video.title || 'Untitled video'}</p>
 
+              <div className="p-3">
+                <p className="line-clamp-2 text-sm font-semibold text-slate-900">
+                  {video.title || 'Untitled video'}
+                </p>
+
+                {/* REMOVE BUTTON */}
                 <button
                   type="button"
-                  onClick={() => handleRemoveVideo(video._id)}
+                  onClick={(e) => {
+                    e.stopPropagation()   // ⭐ IMPORTANT
+                    handleRemoveVideo(video._id)
+                  }}
                   disabled={Boolean(removingById[video._id])}
                   className="mt-3 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -158,7 +178,7 @@ export function PlaylistDetailPage() {
             </article>
           ))}
         </div>
-      ) : null}
+      )}
     </section>
   )
 }
