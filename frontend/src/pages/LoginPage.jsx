@@ -64,7 +64,7 @@ export function LoginPage() {
       }
 
      const response = await httpClient.post('/api/v1/users/google-login', { credential })
-
+     console.log("GOOGLE LOGIN FINAL FIX");
       const payload = response?.data
 
       const accessToken = payload?.data?.accessToken
