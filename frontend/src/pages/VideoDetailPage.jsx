@@ -395,21 +395,6 @@ export function VideoDetailPage() {
     }
   }
 
-  async function handleShareVideo() {
-    if (!videoId) {
-      return
-    }
-
-    const shareLink = `${window.location.origin}/video/${videoId}`
-
-    try {
-      await navigator.clipboard.writeText(shareLink)
-      toast.success('Link copied')
-    } catch {
-      toast.error('Could not copy link')
-    }
-  }
-
   async function handleToggleSubscribe() {
     const channelId = channelOwnerId
     if (!channelId || channelSubscribing || String(channelId) === String(currentUser?._id)) {
@@ -461,14 +446,6 @@ export function VideoDetailPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{video?.title}</h1>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleShareVideo}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-            >
-              Share
-            </button>
-
             <button
               type="button"
               onClick={handleTogglePublish}
