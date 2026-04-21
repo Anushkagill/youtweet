@@ -1,13 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import axios from "axios";
 
 export const generateCaption = async (req, res) => {
   try {
-    console.log("🔥 Gemini API HIT");
-
     const { text } = req.body;
 
     if (!text) {
@@ -17,18 +11,18 @@ export const generateCaption = async (req, res) => {
       });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("❌ GEMINI_API_KEY missing");
-      return res.status(500).json({
-        success: false,
-        message: "Server config error",
-      });
-    }
+    const API_KEY = process.env.GEMINI_API_KEY;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `
-You are a viral YouTube content strategist.
+    const url = `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash-lite:generateContent?key=${API_KEY}`;
+
+    const response = await axios.post(url, {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `
+You are a viral YouTube strategist.
 
 Input:
 "${text}"
@@ -36,29 +30,19 @@ Input:
 Generate:
 Title:
 Description:
-`,
+              `,
+            },
+          ],
+        },
+      ],
     });
 
-    // 🔥 SAFE RESPONSE EXTRACTION (handles all Gemini formats)
-    let output = "";
-
-    try {
-      if (typeof response.text === "function") {
-        output = response.text();
-      } else if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
-        output = response.candidates[0].content.parts[0].text;
-      } else {
-        console.log("⚠️ Unknown Gemini response:", response);
-        output = text;
-      }
-    } catch (err) {
-      console.error("❌ Parsing error:", err);
-      output = text;
-    }
+    // 🔥 Extract text safely
+    const output =
+      response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     console.log("AI OUTPUT:", output);
 
-    // 🔥 SAFE TITLE + DESCRIPTION PARSING
     let title = "";
     let description = "";
 
@@ -67,7 +51,6 @@ Description:
       title = parts[0].replace("Title:", "").trim();
       description = parts[1].trim();
     } else {
-      // fallback if AI format breaks
       title = output.split("\n")[0] || text;
       description = output || "Check this out!";
     }
@@ -79,11 +62,14 @@ Description:
     });
 
   } catch (error) {
-    console.error("❌ Gemini ERROR FULL:", error);
+    console.error("❌ AI ERROR:", error.response?.data || error.message);
 
-    return res.status(500).json({
-      success: false,
-      message: error.message || "AI generation failed",
+    // 🔥 fallback so UI never breaks
+    return res.json({
+      success: true,
+      title: `🔥 ${req.body.text.slice(0, 40)}`,
+      description: "Something interesting you should check out!",
+      fallback: true,
     });
   }
 };
