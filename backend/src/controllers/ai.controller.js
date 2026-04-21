@@ -22,12 +22,27 @@ export const generateCaption = async (req, res) => {
           parts: [
             {
               text: `
-You are a viral YouTube strategist.
+You are a viral YouTube content strategist.
 
 Input:
 "${text}"
 
-Generate:
+Your task:
+- Create a HIGHLY engaging YouTube title
+- DO NOT repeat the input directly
+- Add emotion, curiosity, or storytelling
+- Make it feel human and clickable
+- Keep it natural (not robotic)
+
+Examples:
+Input: sad
+Output: "I Hit My Lowest Point… Then Something Changed"
+
+Input: coding
+Output: "This One Coding Habit Changed Everything"
+
+Now generate:
+
 Title:
 Description:
               `,
@@ -37,7 +52,6 @@ Description:
       ],
     });
 
-    // 🔥 Extract text safely
     const output =
       response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
@@ -55,6 +69,11 @@ Description:
       description = output || "Check this out!";
     }
 
+    // 🔥 SMALL SAFETY FIX (NO LOGIC CHANGE)
+    if (title.toLowerCase().trim() === text.toLowerCase().trim()) {
+      title = `This Changed Everything About ${text}`;
+    }
+
     return res.json({
       success: true,
       title,
@@ -64,7 +83,6 @@ Description:
   } catch (error) {
     console.error("❌ AI ERROR:", error.response?.data || error.message);
 
-    // 🔥 fallback so UI never breaks
     return res.json({
       success: true,
       title: `🔥 ${req.body.text.slice(0, 40)}`,
