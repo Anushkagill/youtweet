@@ -114,6 +114,17 @@ export function PlaylistDetailPage() {
     }
   }
 
+  function handleVideoCardClick(videoId) {
+    // Temporary debug line to confirm card clicks are firing.
+    console.log('[PlaylistDetailPage] video card clicked:', videoId)
+
+    if (!videoId) {
+      return
+    }
+
+    navigate(`/video/${videoId}`)
+  }
+
   if (loading) return <PlaylistDetailSkeleton />
 
   if (error) {
@@ -148,7 +159,7 @@ export function PlaylistDetailPage() {
           {videos.map((video) => (
             <article
               key={video._id}
-              onClick={() => navigate(`/video/${video._id}`)}
+              onClick={() => handleVideoCardClick(video?._id)}
               className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm cursor-pointer transition hover:shadow-md"
             >
               <img
@@ -166,7 +177,8 @@ export function PlaylistDetailPage() {
                 <button
                   type="button"
                   onClick={(e) => {
-                    e.stopPropagation()   // ⭐ IMPORTANT
+                    e.preventDefault()
+                    e.stopPropagation()
                     handleRemoveVideo(video._id)
                   }}
                   disabled={Boolean(removingById[video._id])}
