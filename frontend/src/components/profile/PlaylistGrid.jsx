@@ -59,24 +59,33 @@ export function PlaylistGrid({ userId }) {
       const response = await fetchProfilePlaylists({ userId, limit: 24 })
       const basePlaylists = response.playlists
 
-      const withThumbnail = await Promise.all(
+      // ✅ FIXED: no UI blocking + no delay
+      const withThumbnail = await Promise.allSettled(
         basePlaylists.map(async (item) => {
           if (!item?._id || !item.totalVideos) {
             return { ...item, thumbnail: '' }
           }
 
-          try {
-            const details = await fetchPlaylistById(item._id)
-            const firstVideoThumb =
-              details.playlist?.videos?.[0]?.thumbnail || ''
-            return { ...item, thumbnail: firstVideoThumb }
-          } catch {
-            return { ...item, thumbnail: '' }
-          }
-        }),
+          const details = await fetchPlaylistById(item._id)
+
+          const firstVideoThumb =
+            details.playlist?.videos?.[0]?.thumbnail || ''
+
+          return { ...item, thumbnail: firstVideoThumb }
+        })
       )
 
-      setPlaylists(withThumbnail)
+      const finalPlaylists = withThumbnail.map((res, index) => {
+        if (res.status === "fulfilled") {
+          return res.value
+        } else {
+          console.warn("⚠️ Failed playlist:", basePlaylists[index]._id)
+          return { ...basePlaylists[index], thumbnail: '' }
+        }
+      })
+
+      setPlaylists(finalPlaylists)
+
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not fetch playlists.'))
     } finally {
@@ -88,14 +97,13 @@ export function PlaylistGrid({ userId }) {
     loadPlaylists()
   }, [loadPlaylists])
 
-  // ✅ FIXED DELETE
   async function handleDeletePlaylist(playlistId) {
     if (!playlistId || deletingById[playlistId]) return
 
     setDeletingById((prev) => ({ ...prev, [playlistId]: true }))
 
     try {
-      await httpClient.delete(`/api/v1/playlists/${playlistId}`) // ✅ FIX
+      await httpClient.delete(`/api/v1/playlists/${playlistId}`)
       setPlaylists((prev) => prev.filter((item) => item._id !== playlistId))
       toast.success('Playlist deleted')
     } catch (err) {
@@ -106,7 +114,6 @@ export function PlaylistGrid({ userId }) {
     }
   }
 
-  // ✅ FIXED TOGGLE
   async function handleTogglePlaylistPrivacy(playlistId) {
     if (!playlistId) return
 
@@ -122,7 +129,7 @@ export function PlaylistGrid({ userId }) {
 
     try {
       const res = await httpClient.patch(
-        `/api/v1/playlists/toggle-public-status/${playlistId}` // ✅ FIX
+        `/api/v1/playlists/toggle-public-status/${playlistId}`
       )
 
       if (res.data?.data?.isPublic !== undefined) {
