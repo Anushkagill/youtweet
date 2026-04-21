@@ -83,7 +83,10 @@ export function PlaylistDetailPage() {
     const previousVideos = videos
 
     setRemovingById((prev) => ({ ...prev, [videoId]: true }))
-    setVideos((prev) => prev.filter((video) => video._id !== videoId))
+    setVideos((prev) => prev.filter((video) => {
+      const id = video?._id || video?.video?._id
+      return id !== videoId
+    }))
 
     setPlaylist((prev) => {
       if (!prev) return prev
@@ -112,17 +115,6 @@ export function PlaylistDetailPage() {
     } finally {
       setRemovingById((prev) => ({ ...prev, [videoId]: false }))
     }
-  }
-
-  function handleVideoCardClick(videoId) {
-    // Temporary debug line to confirm card clicks are firing.
-    console.log('[PlaylistDetailPage] video card clicked:', videoId)
-
-    if (!videoId) {
-      return
-    }
-
-    navigate(`/video/${videoId}`)
   }
 
   if (loading) return <PlaylistDetailSkeleton />
@@ -156,39 +148,58 @@ export function PlaylistDetailPage() {
       {/* VIDEOS */}
       {videos.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {videos.map((video) => (
-            <article
-              key={video._id}
-              onClick={() => handleVideoCardClick(video?._id)}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm cursor-pointer transition hover:shadow-md"
-            >
-              <img
-                src={video.thumbnail}
-                alt={video.title || 'Video thumbnail'}
-                className="aspect-video w-full object-cover"
-              />
+          {videos.map((video) => {
+            // 🔥 SAFE EXTRACTION
+            const videoId =
+              video?._id ||
+              video?.videoId ||
+              video?.id ||
+              video?.video?._id
 
-              <div className="p-3">
-                <p className="line-clamp-2 text-sm font-semibold text-slate-900">
-                  {video.title || 'Untitled video'}
-                </p>
+            const thumbnail =
+              video?.thumbnail || video?.video?.thumbnail || ''
 
-                {/* REMOVE BUTTON */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleRemoveVideo(video._id)
-                  }}
-                  disabled={Boolean(removingById[video._id])}
-                  className="mt-3 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {removingById[video._id] ? 'Removing...' : 'Remove'}
-                </button>
-              </div>
-            </article>
-          ))}
+            const title =
+              video?.title || video?.video?.title || 'Untitled video'
+
+            return (
+              <article
+                key={videoId}
+                onClick={() => {
+                  console.log("CLICK:", videoId, video)
+                  if (!videoId) return
+                  navigate(`/video/${videoId}`)
+                }}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm cursor-pointer transition hover:shadow-md"
+              >
+                <img
+                  src={thumbnail}
+                  alt={title}
+                  className="aspect-video w-full object-cover"
+                />
+
+                <div className="p-3">
+                  <p className="line-clamp-2 text-sm font-semibold text-slate-900">
+                    {title}
+                  </p>
+
+                  {/* REMOVE BUTTON */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleRemoveVideo(videoId)
+                    }}
+                    disabled={Boolean(removingById[videoId])}
+                    className="mt-3 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {removingById[videoId] ? 'Removing...' : 'Remove'}
+                  </button>
+                </div>
+              </article>
+            )
+          })}
         </div>
       )}
     </section>
