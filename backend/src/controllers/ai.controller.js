@@ -6,7 +6,7 @@ const ai = new GoogleGenAI({
 
 export const generateCaption = async (req, res) => {
   try {
-    console.log("🔥 Gemini NEW SDK Hit");
+    console.log("🔥 Gemini API HIT");
 
     const { text } = req.body;
 
@@ -14,6 +14,14 @@ export const generateCaption = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Text is required",
+      });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("❌ GEMINI_API_KEY missing");
+      return res.status(500).json({
+        success: false,
+        message: "Server config error",
       });
     }
 
@@ -25,33 +33,32 @@ You are a viral YouTube content strategist.
 Input:
 "${text}"
 
-Your job:
-Turn this into HIGH-ENGAGEMENT content.
-
 Generate:
-1. A scroll-stopping YouTube title (curiosity + emotion)
-2. A short engaging description (2–3 lines max)
-
-Rules:
-- DO NOT repeat the input
-- DO NOT use generic words like "randomness"
-- DO NOT use "watch now"
-- Make it feel clickable and human
-- Use curiosity, relatability, or urgency
-
-Style Examples:
-- "I Tried This for 7 Days… Here’s What Happened"
-- "Nobody Talks About This Coding Habit (But It Works)"
-- "This Changed My Daily Coding Routine Forever"
-
-Format strictly:
 Title:
 Description:
 `,
     });
 
-    const output = response.text;
+    // 🔥 SAFE RESPONSE EXTRACTION (handles all Gemini formats)
+    let output = "";
 
+    try {
+      if (typeof response.text === "function") {
+        output = response.text();
+      } else if (response.candidates?.[0]?.content?.parts?.[0]?.text) {
+        output = response.candidates[0].content.parts[0].text;
+      } else {
+        console.log("⚠️ Unknown Gemini response:", response);
+        output = text;
+      }
+    } catch (err) {
+      console.error("❌ Parsing error:", err);
+      output = text;
+    }
+
+    console.log("AI OUTPUT:", output);
+
+    // 🔥 SAFE TITLE + DESCRIPTION PARSING
     let title = "";
     let description = "";
 
@@ -60,8 +67,9 @@ Description:
       title = parts[0].replace("Title:", "").trim();
       description = parts[1].trim();
     } else {
-      title = text;
-      description = "Check this out!";
+      // fallback if AI format breaks
+      title = output.split("\n")[0] || text;
+      description = output || "Check this out!";
     }
 
     return res.json({
@@ -71,11 +79,11 @@ Description:
     });
 
   } catch (error) {
-    console.error("❌ Gemini ERROR:", error.message);
+    console.error("❌ Gemini ERROR FULL:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Error generating content",
+      message: error.message || "AI generation failed",
     });
   }
 };
