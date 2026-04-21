@@ -78,10 +78,11 @@ export async function removeVideoFromPlaylist(playlistId, videoId) {
 
 export async function deletePlaylist(playlistId) {
   const response = await httpClient.delete(`/api/v1/playlists/${playlistId}`)
-
+console.log("Deleting playlistId:", playlistId)
   return {
     message: response.data?.message,
   }
+  
 }
 
 export async function togglePlaylistPublicStatus(playlistId) {
