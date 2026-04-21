@@ -3,7 +3,7 @@ import { clearStoredToken, getStoredToken } from '../utils/tokenStorage'
 
 // ✅ create instance with backend URL
 const axiosInstance = axios.create({
-  baseURL: "https://youtweet-backend-wbqh.onrender.com", // 🔥 put your real backend URL
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
 })
 
