@@ -63,7 +63,7 @@ export function LoginPage() {
         return
       }
 
-      const response = await httpClient.post('/users/google-login', { credential })
+     const response = await httpClient.post('/api/v1/users/google-login', { credential })
 
       const payload = response?.data
 
