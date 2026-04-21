@@ -85,7 +85,7 @@ Description:
 
     return res.json({
       success: true,
-      title: `🔥 ${req.body.text.slice(0, 40)}`,
+      title: ` ${req.body.text.slice(0, 40)}`,
       description: "Something interesting you should check out!",
       fallback: true,
     });
